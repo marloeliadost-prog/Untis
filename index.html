@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>Stundenplan</title>
+  <title>Untis – Block Breaker</title>
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
     body {
@@ -20,7 +20,27 @@
       user-select: none;
       -webkit-user-select: none;
     }
-    #upload-box {
+    #menu {
+      width: min(92vw, 440px); padding: 34px 24px; text-align: center;
+      background: linear-gradient(145deg, #292946, #141421); border: 1px solid #46466b;
+      border-radius: 24px; box-shadow: 0 0 35px rgba(112,90,255,.25); z-index: 30;
+    }
+    #menu h1 { font-size: clamp(38px, 12vw, 64px); letter-spacing: 4px; color: #8d7bff; text-shadow: 0 0 22px rgba(141,123,255,.55); margin-bottom: 8px; }
+    #menu p { color: #c8c8df; margin: 10px 0 24px; }
+    .menu-btn { background: linear-gradient(90deg,#7c4dff,#00d5a4); border: 0; color: white; padding: 14px 28px; border-radius: 12px; font-weight: 800; font-size: 17px; cursor: pointer; }
+    #menu-high { margin-top: 18px; color: #ffd66b; font-weight: 700; }
+    #round-info { margin-top: 10px; color: #c8c8df; font-size: 14px; }
+    #finish-panel {
+      display: none; position: fixed; z-index: 120; left: 50%; top: 50%;
+      transform: translate(-50%, -50%); width: min(88vw, 360px);
+      padding: 26px 20px; text-align: center; border-radius: 20px;
+      background: linear-gradient(145deg, #292946, #141421);
+      border: 1px solid #7770c9; box-shadow: 0 0 35px rgba(112,90,255,.4);
+    }
+    #finish-panel h2 { color: #ffd66b; margin-bottom: 12px; }
+    #finish-panel p { margin: 9px 0; color: #eee; }
+    #finish-panel button { margin-top: 16px; }
+    #upload-box { display:none;
       background: #2b2b3c;
       padding: 24px;
       border-radius: 16px;
@@ -95,8 +115,16 @@
 </head>
 <body>
 
+  <div id="menu">
+    <h1>UNTIS</h1>
+    <p>Block Breaker · PC & Handy</p>
+    <button class="menu-btn" id="menu-play" type="button">▶ SPIELEN</button>
+    <div id="menu-high">🏆 Highscore: <span id="highscore-menu">0</span></div>
+    <div id="round-info">Je schneller du alle Blöcke zerstörst, desto mehr Zeitbonus bekommst du!</div>
+  </div>
+
   <div id="upload-box">
-    <h2>Block-Breaker (PC & Handy)</h2>
+    <h2>Untis · Block-Breaker</h2>
     <p>
       1. Screenshot auswählen.<br>
       2. Mit Finger oder Maus ein Rechteck über die Fächer ziehen.<br>
@@ -107,6 +135,13 @@
   </div>
 
   <div id="toast" style="display:none;"></div>
+  <div id="finish-panel">
+    <h2>🏆 RUNDE GESCHAFFT!</h2>
+    <p id="finish-score"></p>
+    <p id="finish-time"></p>
+    <p id="finish-bonus"></p>
+    <button class="menu-btn" id="again-btn" type="button">NOCHMAL SPIELEN</button>
+  </div>
 
   <div id="stage">
     <img id="bg-img" src="" alt="">
@@ -124,6 +159,46 @@
     const canvas = document.getElementById('game-canvas');
     const ctx = canvas.getContext('2d');
     const toast = document.getElementById('toast');
+    const menu = document.getElementById('menu');
+    const menuPlay = document.getElementById('menu-play');
+    const highscoreMenu = document.getElementById('highscore-menu');
+    const finishPanel = document.getElementById('finish-panel');
+    const finishScore = document.getElementById('finish-score');
+    const finishTime = document.getElementById('finish-time');
+    const finishBonus = document.getElementById('finish-bonus');
+    const againBtn = document.getElementById('again-btn');
+    let roundStartedAt = 0;
+    let score = 0;
+    let highscore = Number(localStorage.getItem('untis-blockbreaker-highscore') || 0);
+    highscoreMenu.textContent = highscore;
+    menuPlay.onclick = () => { menu.style.display = 'none'; uploadBox.style.display = 'block'; };
+    function addScore(points) {
+      score += points;
+      if (score > highscore) {
+        highscore = score;
+        localStorage.setItem('untis-blockbreaker-highscore', highscore);
+        highscoreMenu.textContent = highscore;
+      }
+    }
+    function finishRound() {
+      if (!isPlaying) return;
+      isPlaying = false;
+      cancelAnimationFrame(animId);
+      const seconds = Math.max(1, Math.floor((Date.now() - roundStartedAt) / 1000));
+      const timeBonus = Math.max(0, 600 - seconds) * 5;
+      addScore(timeBonus);
+      finishScore.textContent = 'Punkte insgesamt: ' + score;
+      finishTime.textContent = 'Zeit: ' + seconds + ' Sekunden';
+      finishBonus.textContent = 'Zeitbonus: +' + timeBonus + ' Punkte';
+      finishPanel.style.display = 'block';
+    }
+    againBtn.onclick = () => {
+      finishPanel.style.display = 'none';
+      score = 0;
+      initGame();
+      isPlaying = true;
+      loop();
+    };
 
     let area = null, isSelecting = false, startX = 0, startY = 0;
     let isPlaying = false, animId = null, lastTap = 0;
@@ -217,6 +292,8 @@
       const sx = bgImg.naturalWidth / window.innerWidth, sy = bgImg.naturalHeight / window.innerHeight;
       bricks = [];
       powerups = [];
+      score = 0;
+      roundStartedAt = Date.now();
       restartPending = false;
       speedFactor = 1;
       for (let r = 0; r < rows; r++) {
@@ -280,6 +357,8 @@
       if (!isPlaying) return;
       ctx.fillStyle = '#f4f5f7';
       ctx.fillRect(0, 0, canvas.width, canvas.height);
+      ctx.fillStyle = '#24243a'; ctx.font = 'bold 16px sans-serif'; ctx.textAlign = 'left'; ctx.fillText('Punkte: ' + score, 8, 22);
+      ctx.textAlign = 'right'; ctx.fillText('Best: ' + highscore, canvas.width - 8, 22);
 
       let left = 0;
       bricks.forEach(brick => {
@@ -293,7 +372,7 @@
         ctx.strokeRect(brick.x, brick.y, brick.w, brick.h);
       });
 
-      if (!left && !restartPending) { initGame(); return; }
+      if (!left && !restartPending) { finishRound(); return; }
 
       const paddleY = canvas.height - 34;
       // Deutlich sichtbares, bewegliches Brett
@@ -374,6 +453,7 @@
             if (b.x + b.r > brick.x && b.x - b.r < brick.x + brick.w &&
                 b.y + b.r > brick.y && b.y - b.r < brick.y + brick.h) {
               brick.alive = false;
+              addScore(10);
               b.dy = -b.dy;
               if (Math.random() < 0.38) {
                 const types = ['slow', 'extra', 'wide', 'fast', 'lose', 'narrow'];
