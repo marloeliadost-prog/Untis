@@ -1,0 +1,394 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Stundenplan</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, sans-serif;
+      background: #1e1e2e;
+      color: #fff;
+      width: 100vw;
+      height: 100vh;
+      height: 100dvh;
+      overflow: hidden;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      user-select: none;
+      -webkit-user-select: none;
+    }
+    #upload-box {
+      background: #2b2b3c;
+      padding: 24px;
+      border-radius: 16px;
+      text-align: center;
+      box-shadow: 0 8px 24px rgba(0,0,0,0.4);
+      width: 90%;
+      max-width: 400px;
+      z-index: 20;
+    }
+    #upload-box h2 { margin-bottom: 12px; font-size: 20px; }
+    #upload-box p { margin-bottom: 20px; color: #ccc; font-size: 14px; line-height: 1.5; }
+    
+    #pick-btn {
+      background: #4CAF50;
+      color: #fff;
+      border: none;
+      padding: 14px 24px;
+      border-radius: 10px;
+      font-weight: bold;
+      font-size: 16px;
+      cursor: pointer;
+    }
+    #pick-btn:active { background: #3e8e41; }
+    #image-input { display: none; }
+
+    #stage {
+      display: none;
+      position: relative;
+      width: 100vw;
+      height: 100dvh;
+      touch-action: none;
+    }
+    #bg-img {
+      width: 100%;
+      height: 100%;
+      object-fit: fill;
+      display: block;
+      pointer-events: none;
+    }
+    #selection-box {
+      display: none;
+      position: absolute;
+      border: 2px dashed #00e676;
+      background: rgba(0, 230, 118, 0.2);
+      pointer-events: none;
+    }
+    #toast {
+      position: fixed;
+      top: 16px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: rgba(20, 20, 30, 0.92);
+      color: #fff;
+      padding: 12px 16px;
+      border-radius: 10px;
+      font-size: 13px;
+      text-align: center;
+      width: 88%;
+      max-width: 380px;
+      border: 1px solid #444;
+      z-index: 100;
+      transition: opacity 0.4s;
+      pointer-events: none;
+    }
+    #game-canvas {
+      display: none;
+      position: fixed;
+      z-index: 50;
+      pointer-events: none;
+    }
+  </style>
+</head>
+<body>
+
+  <div id="upload-box">
+    <h2>Block-Breaker (PC & Handy)</h2>
+    <p>
+      1. Screenshot auswählen.<br>
+      2. Mit Finger oder Maus ein Rechteck über die Fächer ziehen.<br>
+      3. <b>Doppeltippen / Doppelklick</b> (oder <b>ESC</b>) zum Starten oder Verstecken.
+    </p>
+    <button id="pick-btn" type="button">Screenshot auswählen</button>
+    <input type="file" id="image-input" accept="image/*">
+  </div>
+
+  <div id="toast" style="display:none;"></div>
+
+  <div id="stage">
+    <img id="bg-img" src="" alt="">
+    <div id="selection-box"></div>
+    <canvas id="game-canvas"></canvas>
+  </div>
+
+    <script>
+    const pickBtn = document.getElementById('pick-btn');
+    const imageInput = document.getElementById('image-input');
+    const uploadBox = document.getElementById('upload-box');
+    const stage = document.getElementById('stage');
+    const bgImg = document.getElementById('bg-img');
+    const selBox = document.getElementById('selection-box');
+    const canvas = document.getElementById('game-canvas');
+    const ctx = canvas.getContext('2d');
+    const toast = document.getElementById('toast');
+
+    let area = null, isSelecting = false, startX = 0, startY = 0;
+    let isPlaying = false, animId = null, lastTap = 0;
+    let bricks = [], balls = [], powerups = [], speedFactor = 1, restartPending = false, paddle = { x: 0, w: 80, h: 12 };
+
+    function showToast(text, ms = 4000) {
+      toast.textContent = text;
+      toast.style.display = 'block';
+      toast.style.opacity = '1';
+      clearTimeout(toast.t);
+      toast.t = setTimeout(() => { toast.style.opacity = '0'; }, ms);
+    }
+
+    pickBtn.onclick = () => imageInput.click();
+
+    imageInput.onchange = (e) => {
+      const file = e.target.files && e.target.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = (ev) => {
+        bgImg.src = ev.target.result;
+        uploadBox.style.display = 'none';
+        stage.style.display = 'block';
+        showToast('Ziehe jetzt ein Rechteck über die Blöcke!', 5000);
+      };
+      reader.readAsDataURL(file);
+    };
+
+    function getPos(e) {
+      const t = (e.touches && e.touches.length ? e.touches[0] :
+                (e.changedTouches && e.changedTouches.length ? e.changedTouches[0] : e));
+      return { x: t.clientX, y: t.clientY };
+    }
+
+    function onStart(e) {
+      const now = Date.now();
+      if (area && now - lastTap < 320) { toggleGame(); lastTap = 0; return; }
+      lastTap = now;
+      if (isPlaying || area) return;
+      const p = getPos(e);
+      isSelecting = true; startX = p.x; startY = p.y;
+      Object.assign(selBox.style, { left: startX+'px', top: startY+'px', width: '0px', height: '0px', display: 'block' });
+    }
+
+    function onMove(e) {
+      if (e.cancelable) e.preventDefault();
+      const p = getPos(e);
+      if (isSelecting) {
+        Object.assign(selBox.style, {
+          left: Math.min(p.x, startX)+'px', top: Math.min(p.y, startY)+'px',
+          width: Math.abs(p.x - startX)+'px', height: Math.abs(p.y - startY)+'px'
+        });
+      } else if (isPlaying && area) {
+        paddle.x = Math.max(0, Math.min(canvas.width - paddle.w, p.x - area.x - paddle.w / 2));
+      }
+    }
+
+    function onEnd(e) {
+      if (!isSelecting) return;
+      isSelecting = false;
+      const p = getPos(e);
+      const w = Math.abs(p.x - startX), h = Math.abs(p.y - startY);
+      selBox.style.display = 'none';
+      if (w > 60 && h > 60) {
+        area = { x: Math.min(p.x, startX), y: Math.min(p.y, startY), w, h };
+        showToast('Gespeichert! Doppeltippen oder ESC zum Starten.', 4000);
+      }
+    }
+
+    stage.addEventListener('touchstart', onStart, { passive: false });
+    stage.addEventListener('touchmove', onMove, { passive: false });
+    stage.addEventListener('touchend', onEnd);
+    stage.addEventListener('mousedown', onStart);
+    window.addEventListener('mousemove', onMove);
+    window.addEventListener('pointermove', onMove);
+    window.addEventListener('mouseup', onEnd);
+    document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && area) toggleGame(); });
+
+    function toggleGame() {
+      isPlaying = !isPlaying;
+      if (isPlaying) { toast.style.display = 'none'; initGame(); loop(); }
+      else { cancelAnimationFrame(animId); canvas.style.display = 'none'; }
+    }
+
+    function initGame() {
+      Object.assign(canvas.style, { left: area.x+'px', top: area.y+'px', display: 'block' });
+      canvas.width = area.w; canvas.height = area.h;
+      const portrait = area.h > area.w;
+      const cols = portrait ? 5 : 8, rows = portrait ? 6 : 5;
+      const bw = area.w / cols, bh = (area.h * 0.58) / rows;
+      const sx = bgImg.naturalWidth / window.innerWidth, sy = bgImg.naturalHeight / window.innerHeight;
+      bricks = [];
+      powerups = [];
+      restartPending = false;
+      speedFactor = 1;
+      for (let r = 0; r < rows; r++) {
+        for (let c = 0; c < cols; c++) {
+          // Die Art eines Power-ups ist bis zum Fangen nicht erkennbar.
+          bricks.push({ x: c*bw, y: r*bh, w: bw, h: bh, sx: (area.x+c*bw)*sx, sy: (area.y+r*bh)*sy, sw: bw*sx, sh: bh*sy, alive: true });
+        }
+      }
+      paddle.w = Math.max(60, area.w * (portrait ? 0.24 : 0.16));
+      paddle.x = (area.w - paddle.w) / 2;
+      resetBall();
+    }
+
+    function resetBall() {
+      const sp = Math.max(2.2, Math.min(area.w, area.h) * 0.006) * speedFactor;
+      balls = [{ x: area.w / 2, y: area.h - 40, r: 7, dx: (Math.random() > 0.5 ? 1 : -1) * sp * 0.8, dy: -sp }];
+    }
+
+    function changeBallSpeed(factor) {
+      speedFactor = Math.max(0.55, Math.min(1.8, speedFactor * factor));
+      balls.forEach(b => {
+        b.dx *= factor;
+        b.dy *= factor;
+        const speed = Math.hypot(b.dx, b.dy);
+        const minSpeed = 1.0, maxSpeed = Math.max(5, Math.min(area.w, area.h) * 0.018);
+        if (speed > maxSpeed) { b.dx *= maxSpeed / speed; b.dy *= maxSpeed / speed; }
+        if (speed < minSpeed) { b.dx *= minSpeed / speed; b.dy *= minSpeed / speed; }
+      });
+    }
+
+    function applyPowerup(type) {
+      // Langsamer, mehr Bälle und ein größeres Brett sind gut.
+      // Schneller, weniger Bälle und ein kleineres Brett sind schlecht.
+      if (type === 'slow') {
+        changeBallSpeed(0.82);
+        showToast('Power-up: Der Ball wird langsamer!', 1700);
+      } else if (type === 'extra') {
+        if (balls.length < 5) {
+          const b = balls[0] || { x: area.w/2, y: area.h/2, r: 7, dx: 2, dy: -2 };
+          balls.push({ x: b.x, y: b.y, r: b.r, dx: -b.dx, dy: b.dy });
+        }
+        showToast('Power-up: Ein zusätzlicher Ball!', 1700);
+      } else if (type === 'wide') {
+        paddle.w = Math.min(area.w * 0.55, paddle.w * 1.2);
+        paddle.x = Math.max(0, Math.min(area.w - paddle.w, paddle.x));
+        showToast('Power-up: Das Brett wird größer!', 1700);
+      } else if (type === 'fast') {
+        changeBallSpeed(1.18);
+        showToast('Power-up: Der Ball wird schneller!', 1700);
+      } else if (type === 'lose') {
+        if (balls.length > 1) balls.pop();
+        showToast('Power-up: Ein Ball verschwindet!', 1700);
+      } else if (type === 'narrow') {
+        paddle.w = Math.max(35, paddle.w * 0.8);
+        paddle.x = Math.max(0, Math.min(area.w - paddle.w, paddle.x));
+        showToast('Power-up: Das Brett wird kleiner!', 1700);
+      }
+    }
+
+    function loop() {
+      if (!isPlaying) return;
+      ctx.fillStyle = '#f4f5f7';
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+      let left = 0;
+      bricks.forEach(brick => {
+        if (!brick.alive) return;
+        left++;
+        // Blöcke sehen alle gleich aus: keine Hinweise auf den Effekt.
+        ctx.drawImage(bgImg, brick.sx, brick.sy, brick.sw, brick.sh,
+                      brick.x, brick.y, brick.w, brick.h);
+        ctx.strokeStyle = 'rgba(0,0,0,0.15)';
+        ctx.lineWidth = 1;
+        ctx.strokeRect(brick.x, brick.y, brick.w, brick.h);
+      });
+
+      if (!left && !restartPending) { initGame(); return; }
+
+      const paddleY = canvas.height - 34;
+      // Deutlich sichtbares, bewegliches Brett
+      ctx.fillStyle = '#00c853';
+      ctx.strokeStyle = '#075c2a';
+      ctx.lineWidth = 3;
+      ctx.beginPath();
+      ctx.roundRect(paddle.x, paddleY, paddle.w, 18, 8);
+      ctx.fill();
+      ctx.stroke();
+
+      // Power-ups fallen nach einem Blocktreffer herunter und wirken erst beim Fangen.
+      for (let i = powerups.length - 1; i >= 0; i--) {
+        const power = powerups[i];
+        power.y += power.dy;
+        ctx.fillStyle = '#f5c542';
+        ctx.strokeStyle = '#765500';
+        ctx.lineWidth = 2;
+        ctx.fillRect(power.x - 9, power.y - 9, 18, 18);
+        ctx.strokeRect(power.x - 9, power.y - 9, 18, 18);
+        ctx.fillStyle = '#342600';
+        ctx.font = 'bold 14px sans-serif';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText('?', power.x, power.y);
+
+        if (power.y + 9 >= paddleY && power.y - 9 <= paddleY + paddle.h &&
+            power.x >= paddle.x && power.x <= paddle.x + paddle.w) {
+          applyPowerup(power.type);
+          powerups.splice(i, 1);
+        } else if (power.y - 9 > canvas.height) {
+          powerups.splice(i, 1);
+        }
+      }
+
+      for (let i = balls.length - 1; i >= 0; i--) {
+        const b = balls[i];
+        const oldY = b.y;
+        ctx.fillStyle = '#e53935';
+        ctx.beginPath();
+        ctx.arc(b.x, b.y, b.r, 0, Math.PI * 2);
+        ctx.fill();
+
+        b.x += b.dx;
+        b.y += b.dy;
+        if (b.x - b.r < 0 || b.x + b.r > canvas.width) b.dx = -b.dx;
+        if (b.y - b.r < 0) b.dy = -b.dy;
+
+        // Der Ball springt nur ab, wenn das Brett ihn tatsächlich trifft.
+        if (b.dy > 0 && oldY + b.r <= paddleY + 2 && b.y + b.r >= paddleY &&
+            b.x >= paddle.x && b.x <= paddle.x + paddle.w) {
+          const hit = (b.x - (paddle.x + paddle.w / 2)) / (paddle.w / 2);
+          const speed = Math.hypot(b.dx, b.dy);
+          b.dx = hit * speed * 0.85;
+          b.dy = -Math.abs(Math.sqrt(Math.max(1, speed * speed - b.dx * b.dx)));
+          b.y = paddleY - b.r;
+        }
+
+        if (b.y - b.r > canvas.height) balls.splice(i, 1);
+      }
+
+      // Verpasster Ball: 2 Sekunden warten, dann Ball an der Brettposition neu starten.
+      if (balls.length === 0 && !restartPending) {
+        restartPending = true;
+        showToast('Ball verpasst! Neustart in 2 Sekunden …', 2000);
+        setTimeout(() => {
+          if (!isPlaying) return;
+          resetBall();
+          restartPending = false;
+        }, 2000);
+      }
+
+      // Blocktreffer: manche Blöcke lassen ein neutrales ?-Power-up fallen.
+      if (!restartPending) {
+        for (const b of balls) {
+          for (const brick of bricks) {
+            if (!brick.alive) continue;
+            if (b.x + b.r > brick.x && b.x - b.r < brick.x + brick.w &&
+                b.y + b.r > brick.y && b.y - b.r < brick.y + brick.h) {
+              brick.alive = false;
+              b.dy = -b.dy;
+              if (Math.random() < 0.38) {
+                const types = ['slow', 'extra', 'wide', 'fast', 'lose', 'narrow'];
+                powerups.push({ x: brick.x + brick.w/2, y: brick.y + brick.h/2,
+                                dy: Math.max(1.5, Math.min(area.w, area.h) * 0.003),
+                                type: types[Math.floor(Math.random() * types.length)] });
+              }
+              break;
+            }
+          }
+        }
+      }
+
+      animId = requestAnimationFrame(loop);
+    }
+  </script>
+</body>
+</html>
