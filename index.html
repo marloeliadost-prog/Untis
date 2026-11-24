@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <meta name="theme-color" content="#171729">
-  <title>Untis – 1000 Level Block Breaker</title>
+  <title>Untis – 2000 Level Block Breaker</title>
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
     :root { color-scheme: dark; }
@@ -129,7 +129,7 @@
 <body>
   <div id="menu" class="panel">
     <h1>UNTIS</h1>
-    <p class="subtitle">Block Breaker · 1000 Level · PC & Handy</p>
+    <p class="subtitle">Block Breaker · 2000 Level · PC & Handy</p>
     <label class="field-label" for="player-name">Dein Spielername</label>
     <input id="player-name" maxlength="18" autocomplete="nickname" placeholder="Name eingeben">
     <button class="menu-btn" id="menu-play" type="button">▶ SPIELEN</button>
@@ -137,7 +137,7 @@
     <button class="secondary-btn" id="skin-gallery-toggle" type="button">🎨 ALLE SCHLÄGER ANSEHEN</button>
     <div id="skin-gallery" class="skin-gallery" hidden></div>
     <div id="menu-high">🏆 Persönlicher Highscore: <span id="highscore-menu">0</span></div>
-    <div id="round-info">Zerstöre die Blöcke, besiege alle 10 Bosse und schaffe 1000 Level!</div>
+    <div id="round-info">Zerstöre die Blöcke, besiege alle 20 Bosse und schaffe 2000 Level!</div>
     <div class="leaderboard">
       <h2>🏆 TOP 3 AUF DIESEM GERÄT</h2>
       <ol id="leader-list"><li><span>Noch keine Einträge</span><span>—</span></li></ol>
@@ -213,7 +213,7 @@
   const nextBtn = $('next-btn');
   const finishMenuBtn = $('finish-menu-btn');
 
-  const MAX_LEVEL = 1000;
+  const MAX_LEVEL = 2000;
   const PROGRESS_KEY = 'untis-blockbreaker-progress-v1';
   const SKINS_KEY = 'untis-blockbreaker-skins-v1';
   const SKINS = [
@@ -227,16 +227,16 @@
     { id:'orange', name:'Orange', top:'#ffd09b', bottom:'#db6718', edge:'#703008', unlockLevel:700 },
     { id:'white', name:'Silber', top:'#ffffff', bottom:'#8d9bb4', edge:'#394253', unlockLevel:800 },
     { id:'rainbow', name:'Regenbogen', top:'#ff9de2', bottom:'#5a63ed', edge:'#25215f', unlockLevel:900 },
-    { id:'lava', name:'Lava-Glitzer', top:'#ffd568', bottom:'#e94712', edge:'#ffd95b', pattern:'lava', unlockLevel:100 },
-    { id:'neon', name:'Neon', top:'#ff64e8', bottom:'#2421a8', edge:'#30fff5', pattern:'neon', unlockLevel:200 },
-    { id:'graffiti', name:'Graffiti', top:'#ffe33d', bottom:'#e72d8e', edge:'#182039', pattern:'graffiti', unlockLevel:300 },
-    { id:'galaxy', name:'Galaxie', top:'#e3a5ff', bottom:'#171747', edge:'#b58bff', pattern:'galaxy', unlockLevel:400 },
-    { id:'winter', name:'Winter', top:'#eaffff', bottom:'#48aadd', edge:'#c9f6ff', pattern:'winter', unlockLevel:500 },
-    { id:'comic', name:'Comic', top:'#fff454', bottom:'#ee3f35', edge:'#1a1a26', pattern:'comic', unlockLevel:600 },
-    { id:'pink-pop', name:'Pink Pop', top:'#ffb5df', bottom:'#ee39ae', edge:'#fff27a', pattern:'pink-pop', unlockLevel:700 },
-    { id:'chalkboard', name:'Mathe', top:'#7ea4a5', bottom:'#193052', edge:'#cbe7d3', pattern:'chalkboard', unlockLevel:800 },
-    { id:'racer', name:'Street Racer', top:'#f1f1f1', bottom:'#d33952', edge:'#202436', pattern:'racer', unlockLevel:900 },
-    { id:'germany', name:'Deutschland', top:'#ffe05e', bottom:'#c62032', edge:'#161616', pattern:'germany', unlockLevel:1000 }
+    { id:'lava', name:'Lava-Glitzer', top:'#ffd568', bottom:'#e94712', edge:'#ffd95b', pattern:'lava', unlockLevel:1000 },
+    { id:'neon', name:'Neon', top:'#ff64e8', bottom:'#2421a8', edge:'#30fff5', pattern:'neon', unlockLevel:1100 },
+    { id:'graffiti', name:'Graffiti', top:'#ffe33d', bottom:'#e72d8e', edge:'#182039', pattern:'graffiti', unlockLevel:1200 },
+    { id:'galaxy', name:'Galaxie', top:'#e3a5ff', bottom:'#171747', edge:'#b58bff', pattern:'galaxy', unlockLevel:1300 },
+    { id:'winter', name:'Winter', top:'#eaffff', bottom:'#48aadd', edge:'#c9f6ff', pattern:'winter', unlockLevel:1400 },
+    { id:'comic', name:'Comic', top:'#fff454', bottom:'#ee3f35', edge:'#1a1a26', pattern:'comic', unlockLevel:1500 },
+    { id:'pink-pop', name:'Pink Pop', top:'#ffb5df', bottom:'#ee39ae', edge:'#fff27a', pattern:'pink-pop', unlockLevel:1600 },
+    { id:'chalkboard', name:'Mathe', top:'#7ea4a5', bottom:'#193052', edge:'#cbe7d3', pattern:'chalkboard', unlockLevel:1700 },
+    { id:'racer', name:'Street Racer', top:'#f1f1f1', bottom:'#d33952', edge:'#202436', pattern:'racer', unlockLevel:1800 },
+    { id:'germany', name:'Deutschland', top:'#ffe05e', bottom:'#c62032', edge:'#161616', pattern:'germany', unlockLevel:1900 }
   ];
   const HIGH_KEY = 'untis-blockbreaker-highscore-v3';
   const LEADER_KEY = 'untis-blockbreaker-leaderboard-v3';
@@ -652,7 +652,7 @@
     const bossHp = 100 + Math.max(0, bossNumber - 1) * 40;
     boss = level % 100 === 0 ? { x: canvas.width * 0.5, y: Math.max(62, canvas.height * 0.16), w: Math.min(canvas.width * 0.42, 180), h: Math.max(34, canvas.height * 0.075), hp:bossHp, maxHp:bossHp, dir:1 } : null;
     lastRocketAt = Date.now();
-    speedFactor = Math.min(2.15, 1 + (level - 1) * 0.00115);
+    speedFactor = Math.min(2.4, 1 + Math.min(level - 1, 1000) * 0.00115 + Math.max(0, level - 1000) * 0.00025);
     Object.assign(canvas.style, { left: area.x + 'px', top: area.y + 'px', display: 'block' });
     canvas.width = Math.max(1, Math.floor(area.w));
     canvas.height = Math.max(1, Math.floor(area.h));
@@ -670,10 +670,10 @@
     nextBrickId = 1;
 
     const rnd = seededRandom(level * 11237 + 5);
-    const iceChance = Math.min(0.165, 0.045 + level * 0.00012);
-    const doubleChance = Math.min(0.42, 0.07 + level * 0.00035);
-    const volatileChance = Math.min(0.15, 0.02 + level * 0.00013);
-    const doubleBrickHp = Math.min(5, 2 + Math.floor((level - 1) / 250));
+    const iceChance = Math.min(0.22, 0.045 + Math.min(level, 1000) * 0.00012 + Math.max(0, level - 1000) * 0.000055);
+    const doubleChance = Math.min(0.5, 0.07 + Math.min(level, 1000) * 0.00035 + Math.max(0, level - 1000) * 0.00008);
+    const volatileChance = Math.min(0.2, 0.02 + Math.min(level, 1000) * 0.00013 + Math.max(0, level - 1000) * 0.00005);
+    const doubleBrickHp = Math.min(7, 2 + Math.floor(Math.min(level - 1, 1000) / 250) + Math.floor(Math.max(0, level - 1000) / 333));
 
     for (let r = 0; r < rows; r++) {
       for (let c = 0; c < cols;) {
@@ -1210,7 +1210,7 @@
     const list = getLeaderboard().sort((a, b) => Number(b.score) - Number(a.score));
     const idx = list.findIndex(x => x.name.toLowerCase() === currentPlayer().toLowerCase());
     const rankText = idx >= 0 ? 'Dein Rang auf diesem Gerät: Platz ' + (idx + 1) : '';
-    finishTitle.textContent = level >= MAX_LEVEL ? '🏆 ALLE 1000 LEVEL GESCHAFFT!' : '🏆 LEVEL ' + level + ' GESCHAFFT!';
+    finishTitle.textContent = level >= MAX_LEVEL ? '🏆 ALLE ' + MAX_LEVEL + ' LEVEL GESCHAFFT!' : '🏆 LEVEL ' + level + ' GESCHAFFT!';
     finishScore.textContent = 'Punkte insgesamt: ' + score.toLocaleString('de-DE');
     finishTime.textContent = 'Zeit für dieses Level: ' + formatTime(seconds);
     finishBonus.textContent = 'Zeitbonus: +' + bonusAwarded.toLocaleString('de-DE') + ' Punkte';
