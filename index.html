@@ -133,6 +133,7 @@
     <label class="field-label" for="player-name">Dein Spielername</label>
     <input id="player-name" maxlength="18" autocomplete="nickname" placeholder="Name eingeben">
     <button class="menu-btn" id="menu-play" type="button">▶ SPIELEN</button>
+    <button class="secondary-btn" id="resume-play" type="button" hidden>▶ GESPEICHERTEN LEVEL FORTSETZEN</button>
     <div class="skin-row"><label for="skin-select">Dein Schläger-Design</label><select id="skin-select"><option value="green">Grün (Start)</option></select></div>
     <button class="secondary-btn" id="skin-gallery-toggle" type="button">🎨 ALLE SCHLÄGER ANSEHEN</button>
     <div id="skin-gallery" class="skin-gallery" hidden></div>
@@ -188,6 +189,7 @@
   const menu = $('menu');
   const uploadBox = $('upload-box');
   const menuPlay = $('menu-play');
+  const resumePlay = $('resume-play');
   const playerNameInput = $('player-name');
   const skinSelect = $('skin-select');
   const skinGalleryToggle = $('skin-gallery-toggle');
@@ -215,6 +217,9 @@
 
   const MAX_LEVEL = 2000;
   const PROGRESS_KEY = 'untis-blockbreaker-progress-v1';
+  const SAVED_IMAGE_DB = 'untis-blockbreaker-save-v1';
+  const SAVED_IMAGE_STORE = 'assets';
+  const SAVED_AREA_KEY = 'untis-blockbreaker-saved-area-v1';
   const SKINS_KEY = 'untis-blockbreaker-skins-v1';
   const SKINS = [
     { id:'green', name:'Grün', top:'#66ffb0', bottom:'#00a85a', edge:'#063f29' },
@@ -300,6 +305,70 @@
     } catch (_) {}
     return null;
   }
+  function openSavedImageDb() {
+    return new Promise((resolve, reject) => {
+      const request = indexedDB.open(SAVED_IMAGE_DB, 1);
+      request.onupgradeneeded = () => request.result.createObjectStore(SAVED_IMAGE_STORE);
+      request.onsuccess = () => resolve(request.result);
+      request.onerror = () => reject(request.error);
+    });
+  }
+  async function saveCachedImage(file) {
+    const db = await openSavedImageDb();
+    await new Promise((resolve, reject) => {
+      const tx = db.transaction(SAVED_IMAGE_STORE, 'readwrite');
+      tx.objectStore(SAVED_IMAGE_STORE).put(file, 'screenshot');
+      tx.oncomplete = resolve;
+      tx.onerror = () => reject(tx.error);
+      tx.onabort = () => reject(tx.error);
+    });
+    db.close();
+  }
+  async function loadCachedImage() {
+    const db = await openSavedImageDb();
+    const image = await new Promise((resolve, reject) => {
+      const request = db.transaction(SAVED_IMAGE_STORE, 'readonly').objectStore(SAVED_IMAGE_STORE).get('screenshot');
+      request.onsuccess = () => resolve(request.result || null);
+      request.onerror = () => reject(request.error);
+    });
+    db.close();
+    return image;
+  }
+  async function updateResumeButton() {
+    const saved = loadProgress();
+    if (!saved) { resumePlay.hidden = true; return; }
+    try {
+      const image = await loadCachedImage();
+      resumePlay.hidden = !image || !safeGet(SAVED_AREA_KEY, '');
+      if (!resumePlay.hidden) resumePlay.textContent = '▶ BEI LEVEL ' + saved.level + ' FORTSETZEN';
+    } catch (_) { resumePlay.hidden = true; }
+  }
+  async function resumeSavedRun() {
+    const savedImage = await loadCachedImage();
+    let savedArea = null;
+    try { savedArea = JSON.parse(safeGet(SAVED_AREA_KEY, 'null')); } catch (_) {}
+    if (!savedImage || !savedArea) {
+      resumePlay.hidden = true;
+      showToast('Bitte wähle dein Bild einmal neu aus und markiere den Spielbereich.');
+      return;
+    }
+    if (imageObjectUrl) URL.revokeObjectURL(imageObjectUrl);
+    imageObjectUrl = URL.createObjectURL(savedImage);
+    bgImg.onload = () => {
+      area = {
+        x: savedArea.x * innerWidth, y: savedArea.y * innerHeight,
+        w: savedArea.w * innerWidth, h: savedArea.h * innerHeight
+      };
+      isSelecting = false;
+      menu.style.display = 'none';
+      uploadBox.style.display = 'none';
+      stage.style.display = 'block';
+      startNewRun();
+    };
+    bgImg.onerror = () => showToast('Das gespeicherte Bild konnte nicht geladen werden. Bitte wähle es neu aus.');
+    bgImg.src = imageObjectUrl;
+  }
+  resumePlay.addEventListener('click', resumeSavedRun);
   function renderSkins() {
     skinSelect.replaceChildren();
     SKINS.filter(skin => unlockedSkins.includes(skin.id)).forEach(skin => {
@@ -406,6 +475,7 @@
   }
   playerNameInput.addEventListener('input', renderLeaderboard);
   renderLeaderboard();
+  updateResumeButton();
 
   function showToast(message, ms = 3200) {
     toast.textContent = message;
@@ -447,6 +517,8 @@
       return;
     }
     if (imageObjectUrl) URL.revokeObjectURL(imageObjectUrl);
+    safeSet(SAVED_AREA_KEY, '');
+    saveCachedImage(file).catch(() => {});
     imageObjectUrl = URL.createObjectURL(file);
     bgImg.onload = () => {
       area = null;
@@ -516,7 +588,9 @@
     selBox.style.display = 'none';
     if (w > 100 && h > 130) {
       area = { x, y, w, h };
-      showToast('Bildfläche gespeichert! Doppeltippen oder ESC startet Level 1.', 4200);
+      safeSet(SAVED_AREA_KEY, JSON.stringify({ x: x / innerWidth, y: y / innerHeight, w: w / innerWidth, h: h / innerHeight }));
+      updateResumeButton();
+      showToast('Bildfläche gespeichert! Doppeltippen oder ESC startet den gespeicherten Level.', 4200);
     } else {
       showToast('Das Rechteck war zu klein. Bitte wähle eine größere Fläche.');
     }
@@ -568,6 +642,7 @@
     menu.style.display = 'block';
     area = null;
     renderLeaderboard();
+    updateResumeButton();
   }
 
   function startNewRun() {
