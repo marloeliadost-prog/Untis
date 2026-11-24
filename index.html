@@ -131,6 +131,7 @@
       Wähle deinen Screenshot aus und ziehe danach ein Rechteck um die Bildfläche,
       die als Blöcke verwendet werden soll.<br><br>
       <b>Doppeltippen / Doppelklick</b> oder <b>ESC</b> startet das Spiel.
+      Ein <b>Dreifachklick</b> zeigt das Bild ohne Spiel; ein weiterer Dreifachklick setzt das Spiel fort.
       Während des Spiels bewegst du das Brett mit Maus oder Finger.
     </p>
     <button id="pick-btn" type="button">Screenshot auswählen</button>
@@ -217,6 +218,9 @@
   let isSelecting = false;
   let startX = 0, startY = 0;
   let lastTap = 0;
+  let tapCount = 0;
+  let imageOnly = false;
+  let imageOnlyStartedAt = 0;
   let isPlaying = false;
   let roundFinished = false;
   let animId = null;
@@ -402,15 +406,16 @@
     if (stage.style.display === 'none') return;
     if (area) {
       const now = Date.now();
-      if (now - lastTap < 360) {
-        if (roundFinished) return;
-        if (!isPlaying) startNewRun();
+      tapCount = now - lastTap < 360 ? tapCount + 1 : 1;
+      lastTap = now;
+      if (tapCount >= 3) {
+        if (isPlaying || imageOnly) toggleImageOnly();
+        tapCount = 0;
         lastTap = 0;
-      } else {
-        lastTap = now;
-        if (!isPlaying && !roundFinished) {
-          showToast('Doppeltippen oder ESC zum Starten.', 1700);
-        }
+      } else if (tapCount === 2) {
+        if (!isPlaying && !imageOnly && !roundFinished) startNewRun();
+      } else if (!isPlaying && !imageOnly && !roundFinished) {
+        showToast('Doppeltippen oder ESC zum Starten.', 1700);
       }
       return;
     }
@@ -461,15 +466,38 @@
   stage.addEventListener('contextmenu', e => e.preventDefault());
 
   document.addEventListener('keydown', (event) => {
-    if (event.key !== 'Escape' || !area || isPlaying || roundFinished || finishPanel.style.display === 'block') return;
+    if (event.key !== 'Escape' || !area || isPlaying || imageOnly || roundFinished || finishPanel.style.display === 'block') return;
     event.preventDefault();
     startNewRun();
   });
 
   finishMenuBtn.addEventListener('click', returnToMenu);
 
+  function toggleImageOnly() {
+    if (!area || roundFinished) return;
+    if (imageOnly) {
+      levelStartedAt += Date.now() - imageOnlyStartedAt;
+      imageOnly = false;
+      imageOnlyStartedAt = 0;
+      isPlaying = true;
+      canvas.style.display = 'block';
+      loop();
+    } else if (isPlaying) {
+      imageOnly = true;
+      imageOnlyStartedAt = Date.now();
+      isPlaying = false;
+      cancelAnimationFrame(animId);
+      toast.style.display = 'none';
+      canvas.style.display = 'none';
+    }
+  }
+
   function returnToMenu() {
     isPlaying = false;
+    imageOnly = false;
+    imageOnlyStartedAt = 0;
+    tapCount = 0;
+    lastTap = 0;
     roundFinished = false;
     cancelAnimationFrame(animId);
     clearTimeout(resetTimer);
@@ -485,6 +513,8 @@
     if (!area || !bgImg.complete) return;
     cancelAnimationFrame(animId);
     clearTimeout(resetTimer);
+    imageOnly = false;
+    imageOnlyStartedAt = 0;
     roundFinished = false;
     isPlaying = true;
     finishPanel.style.display = 'none';
