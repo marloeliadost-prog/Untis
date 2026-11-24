@@ -89,15 +89,15 @@
       font-size: 12px; text-align: center; width: 90%; max-width: 390px;
       border: 1px solid #555; z-index: 100; pointer-events: none;
     }
-    #finish-panel, #pause-panel {
+    #finish-panel {
       display: none; position: fixed; z-index: 120; left: 50%; top: 50%;
       transform: translate(-50%,-50%); width: min(89vw, 370px); max-height: 90dvh;
       overflow-y: auto; padding: 23px 19px; text-align: center; border-radius: 20px;
       background: linear-gradient(145deg,#292946,#141421);
       border: 1px solid #7770c9; box-shadow: 0 0 35px rgba(112,90,255,.42);
     }
-    #finish-panel h2, #pause-panel h2 { color: #ffd66b; margin-bottom: 12px; font-size: 21px; }
-    #finish-panel p, #pause-panel p { margin: 8px 0; color: #eee; font-size: 14px; }
+    #finish-panel h2 { color: #ffd66b; margin-bottom: 12px; font-size: 21px; }
+    #finish-panel p { margin: 8px 0; color: #eee; font-size: 14px; }
     .panel-actions { display: flex; flex-wrap: wrap; justify-content: center; gap: 9px; margin-top: 16px; }
     .small-note { color: #a9a9c2 !important; font-size: 11px !important; line-height: 1.4; }
     @media (max-height: 620px) {
@@ -152,15 +152,6 @@
     </div>
   </div>
 
-  <div id="pause-panel">
-    <h2>⏸ PAUSE</h2>
-    <p>Das Spiel ist angehalten.</p>
-    <div class="panel-actions">
-      <button class="menu-btn" id="resume-btn" type="button">WEITERSPIELEN</button>
-      <button class="secondary-btn" id="pause-menu-btn" type="button">MENÜ</button>
-    </div>
-  </div>
-
   <div id="stage">
     <img id="bg-img" src="" alt="">
     <div id="selection-box"></div>
@@ -197,9 +188,6 @@
   const finishRank = $('finish-rank');
   const nextBtn = $('next-btn');
   const finishMenuBtn = $('finish-menu-btn');
-  const pausePanel = $('pause-panel');
-  const resumeBtn = $('resume-btn');
-  const pauseMenuBtn = $('pause-menu-btn');
 
   const MAX_LEVEL = 1000;
   const PROGRESS_KEY = 'untis-blockbreaker-progress-v1';
@@ -230,7 +218,6 @@
   let startX = 0, startY = 0;
   let lastTap = 0;
   let isPlaying = false;
-  let isPaused = false;
   let roundFinished = false;
   let animId = null;
   let resetTimer = null;
@@ -417,13 +404,11 @@
       const now = Date.now();
       if (now - lastTap < 360) {
         if (roundFinished) return;
-        if (isPlaying) pauseGame();
-        else if (isPaused) resumeGame();
-        else startNewRun();
+        if (!isPlaying) startNewRun();
         lastTap = 0;
       } else {
         lastTap = now;
-        if (!isPlaying && !isPaused && !roundFinished) {
+        if (!isPlaying && !roundFinished) {
           showToast('Doppeltippen oder ESC zum Starten.', 1700);
         }
       }
@@ -476,39 +461,19 @@
   stage.addEventListener('contextmenu', e => e.preventDefault());
 
   document.addEventListener('keydown', (event) => {
-    if (event.key !== 'Escape' || !area || finishPanel.style.display === 'block') return;
+    if (event.key !== 'Escape' || !area || isPlaying || roundFinished || finishPanel.style.display === 'block') return;
     event.preventDefault();
-    if (isPlaying) pauseGame();
-    else if (isPaused) resumeGame();
-    else if (!roundFinished) startNewRun();
+    startNewRun();
   });
 
-  function pauseGame() {
-    if (!isPlaying) return;
-    isPlaying = false;
-    isPaused = true;
-    cancelAnimationFrame(animId);
-    pausePanel.style.display = 'block';
-  }
-  function resumeGame() {
-    if (!isPaused || roundFinished) return;
-    isPaused = false;
-    isPlaying = true;
-    pausePanel.style.display = 'none';
-    loop();
-  }
-  resumeBtn.addEventListener('click', resumeGame);
-  pauseMenuBtn.addEventListener('click', returnToMenu);
   finishMenuBtn.addEventListener('click', returnToMenu);
 
   function returnToMenu() {
     isPlaying = false;
-    isPaused = false;
     roundFinished = false;
     cancelAnimationFrame(animId);
     clearTimeout(resetTimer);
     finishPanel.style.display = 'none';
-    pausePanel.style.display = 'none';
     stage.style.display = 'none';
     uploadBox.style.display = 'none';
     menu.style.display = 'block';
@@ -520,11 +485,9 @@
     if (!area || !bgImg.complete) return;
     cancelAnimationFrame(animId);
     clearTimeout(resetTimer);
-    isPaused = false;
     roundFinished = false;
     isPlaying = true;
     finishPanel.style.display = 'none';
-    pausePanel.style.display = 'none';
     toast.style.display = 'none';
     const saved = loadProgress();
     level = saved ? saved.level : 1;
@@ -589,10 +552,8 @@
 
   function startLevel() {
     isPlaying = true;
-    isPaused = false;
     roundFinished = false;
     finishPanel.style.display = 'none';
-    pausePanel.style.display = 'none';
     clearTimeout(resetTimer);
     powerups = [];
     rockets = [];
@@ -1008,7 +969,7 @@
 
   function gameOver() {
     if (roundFinished) return;
-    isPlaying=false; isPaused=false; roundFinished=true;
+    isPlaying=false; roundFinished=true;
     cancelAnimationFrame(animId); clearTimeout(resetTimer);
     saveLeaderboard();
     saveProgress();
@@ -1025,7 +986,6 @@
   function finishLevel() {
     if (!isPlaying || roundFinished) return;
     isPlaying = false;
-    isPaused = false;
     roundFinished = true;
     cancelAnimationFrame(animId);
     clearTimeout(resetTimer);
