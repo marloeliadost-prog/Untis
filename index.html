@@ -709,6 +709,7 @@
     paddle.h = Math.max(10, Math.min(17, canvas.height * 0.018));
     paddle.x = (canvas.width - paddle.w) / 2;
     resetBall();
+    saveProgress();
     levelStartedAt = Date.now();
     animId = requestAnimationFrame(loop);
     showToast((boss ? '👾 BOSS-KAMPF ' : 'LEVEL ') + level + ' / ' + MAX_LEVEL + ' · ❤️ ' + playerHp, 2800);
