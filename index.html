@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <meta name="theme-color" content="#171729">
-  <title>Untis – 100 Level Block Breaker</title>
+  <title>Untis – 1000 Level Block Breaker</title>
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
     :root { color-scheme: dark; }
@@ -45,6 +45,9 @@
       padding: 11px 17px; border-radius: 11px; font-weight: 700; cursor: pointer;
     }
     #menu-high { margin-top: 13px; color: #ffd66b; font-weight: 800; font-size: 14px; }
+    .skin-row { margin: 12px 0 4px; text-align: left; }
+    .skin-row label { display:block; color:#d9d8ef; font-size:13px; margin:0 0 6px 2px; }
+    #skin-select { width:100%; padding:10px; border-radius:10px; background:#19192b; color:white; border:1px solid #57577d; }
     #round-info { margin-top: 8px; color: #c8c8df; font-size: 12px; line-height: 1.5; }
     .leaderboard {
       margin-top: 18px; padding: 14px; background: rgba(9,9,22,.45);
@@ -107,12 +110,13 @@
 <body>
   <div id="menu" class="panel">
     <h1>UNTIS</h1>
-    <p class="subtitle">Block Breaker · 100 Level · PC & Handy</p>
+    <p class="subtitle">Block Breaker · 1000 Level · PC & Handy</p>
     <label class="field-label" for="player-name">Dein Spielername</label>
     <input id="player-name" maxlength="18" autocomplete="nickname" placeholder="Name eingeben">
     <button class="menu-btn" id="menu-play" type="button">▶ SPIELEN</button>
+    <div class="skin-row"><label for="skin-select">Dein freigeschaltetes Brett</label><select id="skin-select"><option value="green">Grün (Start)</option></select></div>
     <div id="menu-high">🏆 Persönlicher Highscore: <span id="highscore-menu">0</span></div>
-    <div id="round-info">Zerstöre die Blöcke, sammle Items und schaffe alle 100 Level!</div>
+    <div id="round-info">Zerstöre die Blöcke, besiege alle 10 Bosse und schaffe 1000 Level!</div>
     <div class="leaderboard">
       <h2>🏆 TOP 3 AUF DIESEM GERÄT</h2>
       <ol id="leader-list"><li><span>Noch keine Einträge</span><span>—</span></li></ol>
@@ -172,6 +176,7 @@
   const uploadBox = $('upload-box');
   const menuPlay = $('menu-play');
   const playerNameInput = $('player-name');
+  const skinSelect = $('skin-select');
   const highscoreMenu = $('highscore-menu');
   const leaderList = $('leader-list');
   const myRank = $('my-rank');
@@ -196,7 +201,21 @@
   const resumeBtn = $('resume-btn');
   const pauseMenuBtn = $('pause-menu-btn');
 
-  const MAX_LEVEL = 100;
+  const MAX_LEVEL = 1000;
+  const PROGRESS_KEY = 'untis-blockbreaker-progress-v1';
+  const SKINS_KEY = 'untis-blockbreaker-skins-v1';
+  const SKINS = [
+    { id:'green', name:'Grün', top:'#66ffb0', bottom:'#00a85a', edge:'#063f29' },
+    { id:'blue', name:'Blau', top:'#8be7ff', bottom:'#1675d1', edge:'#07365c' },
+    { id:'purple', name:'Lila', top:'#d4a2ff', bottom:'#7935d4', edge:'#35105f' },
+    { id:'gold', name:'Gold', top:'#fff0a0', bottom:'#d18a12', edge:'#684006' },
+    { id:'red', name:'Rot', top:'#ffaaa0', bottom:'#cf263d', edge:'#650b1a' },
+    { id:'cyan', name:'Türkis', top:'#a3fff2', bottom:'#009e9b', edge:'#064b4b' },
+    { id:'pink', name:'Pink', top:'#ffb5df', bottom:'#d43a91', edge:'#681044' },
+    { id:'orange', name:'Orange', top:'#ffd09b', bottom:'#db6718', edge:'#703008' },
+    { id:'white', name:'Silber', top:'#ffffff', bottom:'#8d9bb4', edge:'#394253' },
+    { id:'rainbow', name:'Regenbogen', top:'#ff9de2', bottom:'#5a63ed', edge:'#25215f' }
+  ];
   const HIGH_KEY = 'untis-blockbreaker-highscore-v3';
   const LEADER_KEY = 'untis-blockbreaker-leaderboard-v3';
   const NAME_KEY = 'untis-blockbreaker-playername-v3';
@@ -228,6 +247,47 @@
   let nextBrickId = 1;
   let toastTimer = null;
   let imageObjectUrl = null;
+  let playerHp = 50;
+  let boss = null;
+  let rockets = [];
+  let lastRocketAt = 0;
+  let unlockedSkins = loadSkins();
+  let selectedSkin = safeGet('untis-blockbreaker-selected-skin-v1', 'green');
+
+  function loadSkins() {
+    try {
+      const saved = JSON.parse(localStorage.getItem(SKINS_KEY) || '["green"]');
+      return Array.isArray(saved) ? [...new Set(['green', ...saved.filter(id => SKINS.some(x => x.id === id))])] : ['green'];
+    } catch (_) { return ['green']; }
+  }
+  function saveProgress() {
+    safeSet(PROGRESS_KEY, JSON.stringify({ level, score, playerHp }));
+  }
+  function loadProgress() {
+    try {
+      const p = JSON.parse(localStorage.getItem(PROGRESS_KEY) || 'null');
+      if (p && Number.isFinite(p.level) && p.level >= 1 && p.level <= MAX_LEVEL) {
+        return { level: Math.floor(p.level), score: Math.max(0, Number(p.score) || 0), playerHp: clamp(Number(p.playerHp) || 50, 1, 50) };
+      }
+    } catch (_) {}
+    return null;
+  }
+  function renderSkins() {
+    skinSelect.replaceChildren();
+    SKINS.filter(skin => unlockedSkins.includes(skin.id)).forEach(skin => {
+      const option = document.createElement('option');
+      option.value = skin.id;
+      option.textContent = skin.name;
+      skinSelect.appendChild(option);
+    });
+    if (!unlockedSkins.includes(selectedSkin)) selectedSkin = 'green';
+    skinSelect.value = selectedSkin;
+  }
+  skinSelect.addEventListener('change', () => {
+    selectedSkin = skinSelect.value;
+    safeSet('untis-blockbreaker-selected-skin-v1', selectedSkin);
+  });
+  renderSkins();
 
   function safeGet(key, fallback) {
     try { const value = localStorage.getItem(key); return value === null ? fallback : value; }
@@ -466,9 +526,13 @@
     finishPanel.style.display = 'none';
     pausePanel.style.display = 'none';
     toast.style.display = 'none';
-    level = 1;
-    score = 0;
+    const saved = loadProgress();
+    level = saved ? saved.level : 1;
+    score = saved ? saved.score : 0;
+    playerHp = saved ? saved.playerHp : 50;
     levelTimeBonus = 0;
+    boss = null;
+    rockets = [];
     roundStartedAt = Date.now();
     startLevel();
   }
@@ -531,7 +595,10 @@
     pausePanel.style.display = 'none';
     clearTimeout(resetTimer);
     powerups = [];
-    speedFactor = Math.min(1.55, 1 + (level - 1) * 0.005);
+    rockets = [];
+    boss = level % 100 === 0 ? { x: canvas.width * 0.5, y: Math.max(62, canvas.height * 0.16), w: Math.min(canvas.width * 0.42, 180), h: Math.max(34, canvas.height * 0.075), hp:100, maxHp:100, dir:1 } : null;
+    lastRocketAt = Date.now();
+    speedFactor = Math.min(1.8, 1 + (level - 1) * 0.0008);
     Object.assign(canvas.style, { left: area.x + 'px', top: area.y + 'px', display: 'block' });
     canvas.width = Math.max(1, Math.floor(area.w));
     canvas.height = Math.max(1, Math.floor(area.h));
@@ -589,7 +656,7 @@
     resetBall();
     levelStartedAt = Date.now();
     animId = requestAnimationFrame(loop);
-    showToast('LEVEL ' + level + ' / ' + MAX_LEVEL + ' · Multiplikator ' + multiplier().toFixed(1).replace('.', ',') + '×', 2300);
+    showToast((boss ? '👾 BOSS-KAMPF ' : 'LEVEL ') + level + ' / ' + MAX_LEVEL + ' · ❤️ ' + playerHp, 2800);
   }
 
   function resetBall() {
@@ -777,20 +844,52 @@
     ctx.font = 'bold ' + fontSize + 'px sans-serif';
     ctx.textBaseline = 'middle';
     ctx.textAlign = 'left';
-    ctx.fillText('LEVEL ' + level + '/' + MAX_LEVEL, 8, 13);
+    ctx.fillText('LEVEL ' + level + '/' + MAX_LEVEL + '  ❤️ ' + playerHp, 8, 13);
     ctx.fillText('Zeit ' + formatTime(seconds), 8, 29);
     ctx.textAlign = 'right';
     ctx.fillText('Punkte ' + score.toLocaleString('de-DE'), canvas.width - 8, 13);
-    ctx.fillText('×' + multiplier().toFixed(1).replace('.', ','), canvas.width - 8, 29);
+    ctx.fillText((boss ? 'BOSS ❤️ ' + boss.hp : '×' + multiplier().toFixed(1).replace('.', ',')), canvas.width - 8, 29);
   }
 
   function drawPaddle() {
     const y = canvas.height - 32;
+    const skin = SKINS.find(item => item.id === selectedSkin) || SKINS[0];
     const grad = ctx.createLinearGradient(paddle.x, y, paddle.x, y + paddle.h);
-    grad.addColorStop(0, '#66ffb0'); grad.addColorStop(1, '#00a85a');
-    ctx.fillStyle = grad; ctx.strokeStyle = '#063f29'; ctx.lineWidth = 2;
+    grad.addColorStop(0, skin.top); grad.addColorStop(1, skin.bottom);
+    ctx.fillStyle = grad; ctx.strokeStyle = skin.edge; ctx.lineWidth = 2;
     drawRoundedRect(paddle.x, y, paddle.w, paddle.h, 7);
     ctx.fill(); ctx.stroke();
+  }
+
+  function drawBoss(now) {
+    if (!boss) return;
+    boss.x += boss.dir * Math.max(1.1, canvas.width * 0.0022);
+    if (boss.x - boss.w/2 < 5 || boss.x + boss.w/2 > canvas.width - 5) boss.dir *= -1;
+    if (now - lastRocketAt > 1700) {
+      rockets.push({ x: boss.x, y: boss.y + boss.h/2, dy: Math.max(2.2, canvas.height * 0.0045) });
+      lastRocketAt = now;
+    }
+    ctx.save();
+    const g = ctx.createLinearGradient(boss.x-boss.w/2,boss.y-boss.h/2,boss.x+boss.w/2,boss.y+boss.h/2);
+    g.addColorStop(0,'#ff8a80'); g.addColorStop(1,'#9b1028');
+    ctx.fillStyle = g; ctx.strokeStyle = '#ffd6d6'; ctx.lineWidth = 2;
+    drawRoundedRect(boss.x-boss.w/2,boss.y-boss.h/2,boss.w,boss.h,12); ctx.fill(); ctx.stroke();
+    ctx.fillStyle='#fff'; ctx.textAlign='center'; ctx.textBaseline='middle';
+    ctx.font='bold '+Math.max(13,boss.h*.42)+'px sans-serif'; ctx.fillText('BOSS',boss.x,boss.y);
+    ctx.fillStyle='#321018'; ctx.fillRect(boss.x-boss.w/2,boss.y-boss.h/2-12,boss.w,7);
+    ctx.fillStyle='#ff465f'; ctx.fillRect(boss.x-boss.w/2,boss.y-boss.h/2-12,boss.w*(boss.hp/boss.maxHp),7);
+    ctx.restore();
+    for (let i=rockets.length-1;i>=0;i--) {
+      const rocket=rockets[i]; rocket.y += rocket.dy;
+      ctx.fillStyle='#ff5b36'; ctx.strokeStyle='#ffe0a8'; ctx.lineWidth=1.5;
+      ctx.beginPath(); ctx.moveTo(rocket.x,rocket.y+9); ctx.lineTo(rocket.x-6,rocket.y-5); ctx.lineTo(rocket.x+6,rocket.y-5); ctx.closePath(); ctx.fill(); ctx.stroke();
+      const paddleY=canvas.height-32;
+      if (rocket.y+8>=paddleY && rocket.x>=paddle.x-4 && rocket.x<=paddle.x+paddle.w+4) {
+        playerHp=Math.max(0,playerHp-10); rockets.splice(i,1);
+        showToast('🚀 Treffer! -10 HP · ❤️ '+playerHp,1600);
+        if (playerHp<=0) { gameOver(); return; }
+      } else if (rocket.y>canvas.height+10) rockets.splice(i,1);
+    }
   }
 
   function drawPowerups() {
@@ -861,6 +960,26 @@
       ball.y = paddleY - ball.r;
     }
 
+    if (boss && ball.x + ball.r > boss.x-boss.w/2 && ball.x-ball.r < boss.x+boss.w/2 &&
+        ball.y + ball.r > boss.y-boss.h/2 && ball.y-ball.r < boss.y+boss.h/2) {
+      boss.hp = Math.max(0,boss.hp-20);
+      addScore(50);
+      ball.dy = Math.abs(ball.dy);
+      ball.y = boss.y+boss.h/2+ball.r+1;
+      showToast('💥 Boss getroffen! -20 Boss-HP · +50 Punkte',1200);
+      if (boss.hp<=0) {
+        const skinId=SKINS[Math.min(9,Math.floor(level/100))].id;
+        if (!unlockedSkins.includes(skinId)) {
+          unlockedSkins.push(skinId);
+          safeSet(SKINS_KEY,JSON.stringify(unlockedSkins));
+          renderSkins();
+          showToast('🏆 Boss besiegt! Neues Brett freigeschaltet: '+(SKINS.find(x=>x.id===skinId).name),3000);
+        } else showToast('🏆 Boss besiegt!',1800);
+        boss=null; rockets=[];
+      }
+      return;
+    }
+
     if (ball.fireUntil > now) {
       let hits = 0;
       for (const brick of bricks) {
@@ -887,6 +1006,22 @@
     }
   }
 
+  function gameOver() {
+    if (roundFinished) return;
+    isPlaying=false; isPaused=false; roundFinished=true;
+    cancelAnimationFrame(animId); clearTimeout(resetTimer);
+    saveLeaderboard();
+    saveProgress();
+    finishTitle.textContent='💔 SPIEL VORBEI';
+    finishScore.textContent='Punkte: '+score.toLocaleString('de-DE');
+    finishTime.textContent='Du hast noch Level '+level+' erreicht.';
+    finishBonus.textContent='Deine freigeschalteten Bretter bleiben erhalten.';
+    finishMultiplier.textContent='❤️ Keine Lebenspunkte mehr.';
+    finishRank.textContent='';
+    nextBtn.textContent='WEITER SPIELEN';
+    finishPanel.style.display='block';
+  }
+
   function finishLevel() {
     if (!isPlaying || roundFinished) return;
     isPlaying = false;
@@ -900,11 +1035,18 @@
     const bonusAwarded = addScore(rawBonus);
     levelTimeBonus = bonusAwarded;
     saveLeaderboard();
+    if (level < MAX_LEVEL) {
+      saveProgress();
+      const p = loadProgress();
+      if (p) { p.level = level + 1; safeSet(PROGRESS_KEY, JSON.stringify(p)); }
+    } else {
+      try { localStorage.removeItem(PROGRESS_KEY); } catch (_) {}
+    }
 
     const list = getLeaderboard().sort((a, b) => Number(b.score) - Number(a.score));
     const idx = list.findIndex(x => x.name.toLowerCase() === currentPlayer().toLowerCase());
     const rankText = idx >= 0 ? 'Dein Rang auf diesem Gerät: Platz ' + (idx + 1) : '';
-    finishTitle.textContent = level >= MAX_LEVEL ? '🏆 ALLE 100 LEVEL GESCHAFFT!' : '🏆 LEVEL ' + level + ' GESCHAFFT!';
+    finishTitle.textContent = level >= MAX_LEVEL ? '🏆 ALLE 1000 LEVEL GESCHAFFT!' : '🏆 LEVEL ' + level + ' GESCHAFFT!';
     finishScore.textContent = 'Punkte insgesamt: ' + score.toLocaleString('de-DE');
     finishTime.textContent = 'Zeit für dieses Level: ' + formatTime(seconds);
     finishBonus.textContent = 'Zeitbonus: +' + bonusAwarded.toLocaleString('de-DE') + ' Punkte';
@@ -917,10 +1059,12 @@
   nextBtn.addEventListener('click', () => {
     finishPanel.style.display = 'none';
     if (level >= MAX_LEVEL) {
+      try { localStorage.removeItem(PROGRESS_KEY); } catch (_) {}
       startNewRun();
       return;
     }
     level++;
+    saveProgress();
     startLevel();
   });
 
@@ -935,7 +1079,9 @@
       if (brick.alive && brick.breakable) remaining++;
       drawBrick(brick);
     }
-    if (remaining === 0) {
+    drawBoss(now);
+    if (!isPlaying) return;
+    if (remaining === 0 && !boss) {
       finishLevel();
       return;
     }
