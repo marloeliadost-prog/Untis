@@ -648,9 +648,11 @@
     clearTimeout(resetTimer);
     powerups = [];
     rockets = [];
-    boss = level % 100 === 0 ? { x: canvas.width * 0.5, y: Math.max(62, canvas.height * 0.16), w: Math.min(canvas.width * 0.42, 180), h: Math.max(34, canvas.height * 0.075), hp:100, maxHp:100, dir:1 } : null;
+    const bossNumber = Math.floor(level / 100);
+    const bossHp = 100 + Math.max(0, bossNumber - 1) * 40;
+    boss = level % 100 === 0 ? { x: canvas.width * 0.5, y: Math.max(62, canvas.height * 0.16), w: Math.min(canvas.width * 0.42, 180), h: Math.max(34, canvas.height * 0.075), hp:bossHp, maxHp:bossHp, dir:1 } : null;
     lastRocketAt = Date.now();
-    speedFactor = Math.min(1.8, 1 + (level - 1) * 0.0008);
+    speedFactor = Math.min(2.15, 1 + (level - 1) * 0.00115);
     Object.assign(canvas.style, { left: area.x + 'px', top: area.y + 'px', display: 'block' });
     canvas.width = Math.max(1, Math.floor(area.w));
     canvas.height = Math.max(1, Math.floor(area.h));
@@ -668,9 +670,10 @@
     nextBrickId = 1;
 
     const rnd = seededRandom(level * 11237 + 5);
-    const iceChance = Math.min(0.22, 0.055 + level * 0.0015);
-    const doubleChance = Math.min(0.48, 0.07 + level * 0.004);
-    const volatileChance = Math.min(0.17, 0.025 + level * 0.0013);
+    const iceChance = Math.min(0.165, 0.045 + level * 0.00012);
+    const doubleChance = Math.min(0.42, 0.07 + level * 0.00035);
+    const volatileChance = Math.min(0.15, 0.02 + level * 0.00013);
+    const doubleBrickHp = Math.min(5, 2 + Math.floor((level - 1) / 250));
 
     for (let r = 0; r < rows; r++) {
       for (let c = 0; c < cols;) {
@@ -695,7 +698,7 @@
             id: nextBrickId++, type, originalType: type, iceGroup,
             x, y, w: bw, h: bh, sx: (area.x + x) * sx, sy: (area.y + y) * sy,
             sw: bw * sx, sh: bh * sy, alive: true, breakable: true,
-            hp: type === 'double' ? 2 : 1, cracked: false
+            hp: type === 'double' ? doubleBrickHp : 1, cracked: false
           });
         }
         c += run;
@@ -875,10 +878,10 @@
       ctx.strokeStyle = 'rgba(255,255,255,.55)'; ctx.lineWidth = 1;
     }
     ctx.strokeRect(brick.x + inset, brick.y + inset, brick.w - 2*inset, brick.h - 2*inset);
-    if (brick.type === 'double' && !brick.cracked) {
+    if (brick.type === 'double') {
       ctx.fillStyle = '#ffffff'; ctx.font = 'bold 10px sans-serif';
       ctx.textAlign = 'right'; ctx.textBaseline = 'top';
-      ctx.fillText('2', brick.x + brick.w - 4, brick.y + 3);
+      ctx.fillText(String(brick.hp), brick.x + brick.w - 4, brick.y + 3);
     }
     if (brick.type === 'ice') {
       ctx.fillStyle = 'rgba(255,255,255,.85)';
@@ -1022,8 +1025,11 @@
     if (!boss) return;
     boss.x += boss.dir * Math.max(1.1, canvas.width * 0.0022);
     if (boss.x - boss.w/2 < 5 || boss.x + boss.w/2 > canvas.width - 5) boss.dir *= -1;
-    if (now - lastRocketAt > 1700) {
-      rockets.push({ x: boss.x, y: boss.y + boss.h/2, dy: Math.max(2.2, canvas.height * 0.0045) });
+    const bossNumber = Math.floor(level / 100);
+    const rocketInterval = Math.max(900, 1700 - (bossNumber - 1) * 85);
+    if (now - lastRocketAt > rocketInterval) {
+      const rocketSpeed = Math.max(2.2, canvas.height * 0.0045) * (1 + (bossNumber - 1) * 0.04);
+      rockets.push({ x: boss.x, y: boss.y + boss.h/2, dy: rocketSpeed });
       lastRocketAt = now;
     }
     ctx.save();
