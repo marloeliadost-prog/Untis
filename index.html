@@ -48,6 +48,25 @@
     .skin-row { margin: 12px 0 4px; text-align: left; }
     .skin-row label { display:block; color:#d9d8ef; font-size:13px; margin:0 0 6px 2px; }
     #skin-select { width:100%; padding:10px; border-radius:10px; background:#19192b; color:white; border:1px solid #57577d; }
+    #skin-gallery-toggle { width:100%; margin-top:8px; }
+    .skin-gallery { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:7px; margin-top:10px; text-align:center; }
+    #skin-gallery[hidden] { display:none; }
+    .skin-card { min-width:0; padding:7px 4px; border:1px solid #41415e; border-radius:10px; background:#19192b; }
+    .skin-card.locked { opacity:.48; }
+    .skin-preview { height:18px; margin-bottom:5px; border:3px solid var(--skin-edge); border-radius:999px; background:linear-gradient(180deg,var(--skin-top),var(--skin-bottom)); box-shadow:0 0 6px rgba(255,255,255,.12); }
+    .skin-preview.style-lava { border:4px solid #ffd95b; background:linear-gradient(180deg,#ffe98a 0 18%,#ff8a20 19% 56%,#4a160b 57%); box-shadow:0 0 9px #ffb300; }
+    .skin-preview.style-neon { border-color:#30fff5; background:linear-gradient(90deg,#f43cff,#172d8d,#26fff1); box-shadow:0 0 9px #2cf7f3; }
+    .skin-preview.style-graffiti { background:repeating-linear-gradient(135deg,#ffdf3c 0 8px,#ff3c9e 8px 15px,#31d9ff 15px 22px); }
+    .skin-preview.style-galaxy { background:radial-gradient(circle at 28% 45%,#ff8dd8,transparent 32%),linear-gradient(90deg,#10164f,#6b42a8,#111847); }
+    .skin-preview.style-winter { background:repeating-linear-gradient(90deg,#e9ffff 0 4px,#6bc7f4 4px 10px); }
+    .skin-preview.style-comic { background:repeating-linear-gradient(135deg,#fff34a 0 7px,#f13a32 7px 12px,#202040 12px 14px); }
+    .skin-preview.style-pink-pop { background:radial-gradient(circle,#fff67b 1px,#fa55bb 2px,#ff8bd5 5px); }
+    .skin-preview.style-chalkboard { background:repeating-linear-gradient(0deg,#172b50 0 5px,#47617c 6px,#172b50 7px); }
+    .skin-preview.style-racer { background:repeating-linear-gradient(135deg,#f6f6f6 0 7px,#212536 7px 14px,#df3a54 14px 19px); }
+    .skin-preview.style-germany { background:linear-gradient(180deg,#171717 0 33%,#e53232 34% 66%,#ffd43b 67%); }
+    .skin-label { color:#f4f2ff; font-size:10px; font-weight:700; line-height:1.15; min-height:22px; }
+    .skin-status { color:#a9a9c2; font-size:9px; line-height:1.2; margin-top:3px; }
+    @media (max-width: 370px) { .skin-gallery { grid-template-columns:repeat(3,minmax(0,1fr)); } }
     #round-info { margin-top: 8px; color: #c8c8df; font-size: 12px; line-height: 1.5; }
     .leaderboard {
       margin-top: 18px; padding: 14px; background: rgba(9,9,22,.45);
@@ -114,7 +133,9 @@
     <label class="field-label" for="player-name">Dein Spielername</label>
     <input id="player-name" maxlength="18" autocomplete="nickname" placeholder="Name eingeben">
     <button class="menu-btn" id="menu-play" type="button">▶ SPIELEN</button>
-    <div class="skin-row"><label for="skin-select">Dein freigeschaltetes Brett</label><select id="skin-select"><option value="green">Grün (Start)</option></select></div>
+    <div class="skin-row"><label for="skin-select">Dein Schläger-Design</label><select id="skin-select"><option value="green">Grün (Start)</option></select></div>
+    <button class="secondary-btn" id="skin-gallery-toggle" type="button">🎨 ALLE SCHLÄGER ANSEHEN</button>
+    <div id="skin-gallery" class="skin-gallery" hidden></div>
     <div id="menu-high">🏆 Persönlicher Highscore: <span id="highscore-menu">0</span></div>
     <div id="round-info">Zerstöre die Blöcke, besiege alle 10 Bosse und schaffe 1000 Level!</div>
     <div class="leaderboard">
@@ -169,6 +190,8 @@
   const menuPlay = $('menu-play');
   const playerNameInput = $('player-name');
   const skinSelect = $('skin-select');
+  const skinGalleryToggle = $('skin-gallery-toggle');
+  const skinGallery = $('skin-gallery');
   const highscoreMenu = $('highscore-menu');
   const leaderList = $('leader-list');
   const myRank = $('my-rank');
@@ -195,15 +218,25 @@
   const SKINS_KEY = 'untis-blockbreaker-skins-v1';
   const SKINS = [
     { id:'green', name:'Grün', top:'#66ffb0', bottom:'#00a85a', edge:'#063f29' },
-    { id:'blue', name:'Blau', top:'#8be7ff', bottom:'#1675d1', edge:'#07365c' },
-    { id:'purple', name:'Lila', top:'#d4a2ff', bottom:'#7935d4', edge:'#35105f' },
-    { id:'gold', name:'Gold', top:'#fff0a0', bottom:'#d18a12', edge:'#684006' },
-    { id:'red', name:'Rot', top:'#ffaaa0', bottom:'#cf263d', edge:'#650b1a' },
-    { id:'cyan', name:'Türkis', top:'#a3fff2', bottom:'#009e9b', edge:'#064b4b' },
-    { id:'pink', name:'Pink', top:'#ffb5df', bottom:'#d43a91', edge:'#681044' },
-    { id:'orange', name:'Orange', top:'#ffd09b', bottom:'#db6718', edge:'#703008' },
-    { id:'white', name:'Silber', top:'#ffffff', bottom:'#8d9bb4', edge:'#394253' },
-    { id:'rainbow', name:'Regenbogen', top:'#ff9de2', bottom:'#5a63ed', edge:'#25215f' }
+    { id:'blue', name:'Blau', top:'#8be7ff', bottom:'#1675d1', edge:'#07365c', unlockLevel:100 },
+    { id:'purple', name:'Lila', top:'#d4a2ff', bottom:'#7935d4', edge:'#35105f', unlockLevel:200 },
+    { id:'gold', name:'Gold', top:'#fff0a0', bottom:'#d18a12', edge:'#684006', unlockLevel:300 },
+    { id:'red', name:'Rot', top:'#ffaaa0', bottom:'#cf263d', edge:'#650b1a', unlockLevel:400 },
+    { id:'cyan', name:'Türkis', top:'#a3fff2', bottom:'#009e9b', edge:'#064b4b', unlockLevel:500 },
+    { id:'pink', name:'Pink', top:'#ffb5df', bottom:'#d43a91', edge:'#681044', unlockLevel:600 },
+    { id:'orange', name:'Orange', top:'#ffd09b', bottom:'#db6718', edge:'#703008', unlockLevel:700 },
+    { id:'white', name:'Silber', top:'#ffffff', bottom:'#8d9bb4', edge:'#394253', unlockLevel:800 },
+    { id:'rainbow', name:'Regenbogen', top:'#ff9de2', bottom:'#5a63ed', edge:'#25215f', unlockLevel:900 },
+    { id:'lava', name:'Lava-Glitzer', top:'#ffd568', bottom:'#e94712', edge:'#ffd95b', pattern:'lava', unlockLevel:100 },
+    { id:'neon', name:'Neon', top:'#ff64e8', bottom:'#2421a8', edge:'#30fff5', pattern:'neon', unlockLevel:200 },
+    { id:'graffiti', name:'Graffiti', top:'#ffe33d', bottom:'#e72d8e', edge:'#182039', pattern:'graffiti', unlockLevel:300 },
+    { id:'galaxy', name:'Galaxie', top:'#e3a5ff', bottom:'#171747', edge:'#b58bff', pattern:'galaxy', unlockLevel:400 },
+    { id:'winter', name:'Winter', top:'#eaffff', bottom:'#48aadd', edge:'#c9f6ff', pattern:'winter', unlockLevel:500 },
+    { id:'comic', name:'Comic', top:'#fff454', bottom:'#ee3f35', edge:'#1a1a26', pattern:'comic', unlockLevel:600 },
+    { id:'pink-pop', name:'Pink Pop', top:'#ffb5df', bottom:'#ee39ae', edge:'#fff27a', pattern:'pink-pop', unlockLevel:700 },
+    { id:'chalkboard', name:'Mathe', top:'#7ea4a5', bottom:'#193052', edge:'#cbe7d3', pattern:'chalkboard', unlockLevel:800 },
+    { id:'racer', name:'Street Racer', top:'#f1f1f1', bottom:'#d33952', edge:'#202436', pattern:'racer', unlockLevel:900 },
+    { id:'germany', name:'Deutschland', top:'#ffe05e', bottom:'#c62032', edge:'#161616', pattern:'germany', unlockLevel:1000 }
   ];
   const HIGH_KEY = 'untis-blockbreaker-highscore-v3';
   const LEADER_KEY = 'untis-blockbreaker-leaderboard-v3';
@@ -248,7 +281,11 @@
   function loadSkins() {
     try {
       const saved = JSON.parse(localStorage.getItem(SKINS_KEY) || '["green"]');
-      return Array.isArray(saved) ? [...new Set(['green', ...saved.filter(id => SKINS.some(x => x.id === id))])] : ['green'];
+      const progress = JSON.parse(localStorage.getItem(PROGRESS_KEY) || 'null');
+      const highestClearedLevel = progress && Number.isFinite(progress.level) ? Math.floor(progress.level) - 1 : 0;
+      const earned = SKINS.filter(skin => skin.unlockLevel && highestClearedLevel >= skin.unlockLevel).map(skin => skin.id);
+      const savedIds = Array.isArray(saved) ? saved.filter(id => SKINS.some(skin => skin.id === id)) : [];
+      return [...new Set(['green', ...savedIds, ...earned])];
     } catch (_) { return ['green']; }
   }
   function saveProgress() {
@@ -273,10 +310,34 @@
     });
     if (!unlockedSkins.includes(selectedSkin)) selectedSkin = 'green';
     skinSelect.value = selectedSkin;
+
+    skinGallery.replaceChildren();
+    SKINS.forEach(skin => {
+      const unlocked = unlockedSkins.includes(skin.id);
+      const card = document.createElement('div');
+      card.className = 'skin-card' + (unlocked ? '' : ' locked');
+      const preview = document.createElement('div');
+      preview.className = 'skin-preview' + (skin.pattern ? ' style-' + skin.pattern : '');
+      preview.style.setProperty('--skin-top', skin.top);
+      preview.style.setProperty('--skin-bottom', skin.bottom);
+      preview.style.setProperty('--skin-edge', skin.edge);
+      const name = document.createElement('div');
+      name.className = 'skin-label';
+      name.textContent = skin.name;
+      const status = document.createElement('div');
+      status.className = 'skin-status';
+      status.textContent = unlocked ? 'Freigeschaltet' : 'Boss Level ' + skin.unlockLevel;
+      card.append(preview, name, status);
+      skinGallery.appendChild(card);
+    });
   }
   skinSelect.addEventListener('change', () => {
     selectedSkin = skinSelect.value;
     safeSet('untis-blockbreaker-selected-skin-v1', selectedSkin);
+  });
+  skinGalleryToggle.addEventListener('click', () => {
+    skinGallery.hidden = !skinGallery.hidden;
+    skinGalleryToggle.textContent = skinGallery.hidden ? '🎨 ALLE SCHLÄGER ANSEHEN' : '🎨 SCHLÄGER AUSBLENDEN';
   });
   renderSkins();
 
@@ -843,13 +904,118 @@
   }
 
   function drawPaddle() {
-    const y = canvas.height - 32;
+    const x = paddle.x, y = canvas.height - 32, w = paddle.w, h = paddle.h;
     const skin = SKINS.find(item => item.id === selectedSkin) || SKINS[0];
-    const grad = ctx.createLinearGradient(paddle.x, y, paddle.x, y + paddle.h);
+    const grad = ctx.createLinearGradient(x, y, x, y + h);
     grad.addColorStop(0, skin.top); grad.addColorStop(1, skin.bottom);
-    ctx.fillStyle = grad; ctx.strokeStyle = skin.edge; ctx.lineWidth = 2;
-    drawRoundedRect(paddle.x, y, paddle.w, paddle.h, 7);
-    ctx.fill(); ctx.stroke();
+
+    ctx.save();
+    drawRoundedRect(x, y, w, h, 7);
+    ctx.clip();
+    ctx.fillStyle = grad;
+    ctx.fillRect(x, y, w, h);
+    drawPaddlePattern(skin, x, y, w, h);
+    ctx.restore();
+
+    ctx.save();
+    if (skin.pattern === 'neon') { ctx.shadowColor = skin.edge; ctx.shadowBlur = 10; }
+    ctx.strokeStyle = skin.edge;
+    ctx.lineWidth = skin.pattern === 'lava' ? 4 : 2;
+    drawRoundedRect(x, y, w, h, 7);
+    ctx.stroke();
+    ctx.restore();
+  }
+
+  function drawPaddlePattern(skin, x, y, w, h) {
+    const middle = y + h / 2;
+    if (skin.pattern === 'lava') {
+      ctx.fillStyle = 'rgba(43,13,8,.88)';
+      ctx.fillRect(x, y + h * .62, w, h * .38);
+      const flames = ['#ff6617', '#ffd04b', '#ff3812', '#ff9c22'];
+      for (let i = 0; i < 5; i++) {
+        const fx = x + w * (i + .5) / 5;
+        const fw = Math.max(4, w * .16);
+        ctx.fillStyle = flames[i % flames.length];
+        ctx.beginPath();
+        ctx.moveTo(fx - fw / 2, y + h);
+        ctx.lineTo(fx - fw * .22, y + h * .42);
+        ctx.lineTo(fx, y + h * .68);
+        ctx.lineTo(fx + fw * .18, y + h * .22);
+        ctx.lineTo(fx + fw / 2, y + h);
+        ctx.closePath();
+        ctx.fill();
+      }
+      const phase = Date.now() / 180;
+      [0.12, 0.34, 0.59, 0.82].forEach((ratio, i) => {
+        ctx.globalAlpha = .55 + .45 * Math.abs(Math.sin(phase + i));
+        ctx.fillStyle = '#fff7bd';
+        const sx = x + w * ratio, sy = y + h * (i % 2 ? .28 : .72), r = Math.max(1, h * .14);
+        ctx.fillRect(sx - r / 2, sy - r * 1.6, r, r * 3.2);
+        ctx.fillRect(sx - r * 1.6, sy - r / 2, r * 3.2, r);
+      });
+      ctx.globalAlpha = 1;
+    } else if (skin.pattern === 'neon') {
+      ctx.fillStyle = 'rgba(21,18,80,.7)'; ctx.fillRect(x, y, w, h);
+      ctx.shadowBlur = 7; ctx.shadowColor = '#32fff4';
+      ctx.fillStyle = '#32fff4'; ctx.fillRect(x + w * .08, y + h * .22, w * .84, Math.max(1, h * .12));
+      ctx.shadowColor = '#ff4be1'; ctx.fillStyle = '#ff4be1';
+      ctx.fillRect(x + w * .18, y + h * .68, w * .64, Math.max(1, h * .12));
+      ctx.shadowBlur = 0;
+    } else if (skin.pattern === 'graffiti') {
+      const colors = ['#22e5ff', '#ff31b8', '#fff33b', '#7dff52'];
+      for (let i = 0; i < 7; i++) {
+        ctx.strokeStyle = colors[i % colors.length]; ctx.lineWidth = Math.max(1, h * .18);
+        ctx.beginPath(); ctx.moveTo(x + w * i / 7, y + h); ctx.lineTo(x + w * (i + .55) / 7, y); ctx.stroke();
+      }
+    } else if (skin.pattern === 'galaxy') {
+      const haze = ctx.createLinearGradient(x, y, x + w, y + h);
+      haze.addColorStop(0, 'rgba(255,88,197,.55)'); haze.addColorStop(.5, 'rgba(85,111,255,.5)'); haze.addColorStop(1, 'rgba(33,19,82,.4)');
+      ctx.fillStyle = haze; ctx.fillRect(x, y, w, h);
+      ctx.fillStyle = '#fff';
+      [[.12,.3],[.28,.72],[.49,.24],[.68,.65],[.87,.35]].forEach(([sx,sy],i) => {
+        ctx.beginPath(); ctx.arc(x + w * sx, y + h * sy, Math.max(.7, h * (i % 2 ? .07 : .11)), 0, Math.PI * 2); ctx.fill();
+      });
+    } else if (skin.pattern === 'winter') {
+      ctx.fillStyle = 'rgba(230,255,255,.62)'; ctx.fillRect(x, middle - Math.max(1,h*.08), w, Math.max(1,h*.16));
+      ctx.strokeStyle = '#f5ffff'; ctx.lineWidth = Math.max(1,h*.08);
+      [0.22,0.5,0.78].forEach(ratio => {
+        const cx = x + w * ratio, cy = middle, r = h * .32;
+        ctx.beginPath(); ctx.moveTo(cx-r,cy); ctx.lineTo(cx+r,cy); ctx.moveTo(cx,cy-r); ctx.lineTo(cx,cy+r);
+        ctx.moveTo(cx-r*.7,cy-r*.7); ctx.lineTo(cx+r*.7,cy+r*.7); ctx.moveTo(cx+r*.7,cy-r*.7); ctx.lineTo(cx-r*.7,cy+r*.7); ctx.stroke();
+      });
+    } else if (skin.pattern === 'comic') {
+      ctx.fillStyle = 'rgba(255,239,52,.55)'; ctx.fillRect(x, y, w, h);
+      ctx.strokeStyle = '#171717'; ctx.lineWidth = Math.max(1,h*.09);
+      for (let i = 0; i < 8; i++) {
+        const sx = x + w * i / 8;
+        ctx.beginPath(); ctx.moveTo(sx, y); ctx.lineTo(x + w * (i + .5) / 8, y + h); ctx.stroke();
+      }
+      ctx.fillStyle = '#f23b35';
+      [0.18,0.42,0.68,0.86].forEach(ratio => { ctx.beginPath(); ctx.arc(x+w*ratio,middle,Math.max(1,h*.14),0,Math.PI*2); ctx.fill(); });
+    } else if (skin.pattern === 'pink-pop') {
+      const dots = ['#fff26c','#20dfff','#ff4e87','#9b5bff'];
+      for (let i = 0; i < 9; i++) {
+        ctx.fillStyle = dots[i % dots.length];
+        ctx.beginPath(); ctx.arc(x + w * (i + .5) / 9, y + h * (i % 2 ? .3 : .7), Math.max(1,h*.14), 0, Math.PI*2); ctx.fill();
+      }
+    } else if (skin.pattern === 'chalkboard') {
+      ctx.strokeStyle = 'rgba(224,255,235,.55)'; ctx.lineWidth = Math.max(1,h*.06);
+      ctx.beginPath(); ctx.moveTo(x+w*.08,middle); ctx.lineTo(x+w*.92,middle); ctx.stroke();
+      ctx.fillStyle = '#efffe9'; ctx.font = 'bold ' + Math.max(7,h*.72) + 'px sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+      ctx.fillText('π  +  ×  =', x + w*.5, middle);
+    } else if (skin.pattern === 'racer') {
+      const size = Math.max(3, w / 14);
+      for (let row = 0; row < 2; row++) for (let col = 0; col < 7; col++) {
+        ctx.fillStyle = (row + col) % 2 ? '#222638' : '#fff';
+        ctx.fillRect(x + w * .05 + col * size, y + row * h * .34, size, h * .34);
+      }
+      ctx.strokeStyle = '#e53258'; ctx.lineWidth = Math.max(1,h*.15);
+      ctx.beginPath(); ctx.moveTo(x+w*.04,y+h*.82); ctx.lineTo(x+w*.96,y+h*.35); ctx.stroke();
+    } else if (skin.pattern === 'germany') {
+      ctx.fillStyle = '#161616'; ctx.fillRect(x, y, w, h / 3);
+      ctx.fillStyle = '#df2634'; ctx.fillRect(x, y + h / 3, w, h / 3);
+      ctx.fillStyle = '#ffd53b'; ctx.fillRect(x, y + h * 2 / 3, w, h / 3);
+    }
   }
 
   function drawBoss(now) {
@@ -959,12 +1125,14 @@
       ball.y = boss.y+boss.h/2+ball.r+1;
       showToast('💥 Boss getroffen! -20 Boss-HP · +50 Punkte',1200);
       if (boss.hp<=0) {
-        const skinId=SKINS[Math.min(9,Math.floor(level/100))].id;
-        if (!unlockedSkins.includes(skinId)) {
-          unlockedSkins.push(skinId);
+        const rewardIds = SKINS.filter(skin => skin.unlockLevel === level).map(skin => skin.id);
+        const newlyUnlocked = rewardIds.filter(id => !unlockedSkins.includes(id));
+        if (newlyUnlocked.length) {
+          unlockedSkins.push(...newlyUnlocked);
           safeSet(SKINS_KEY,JSON.stringify(unlockedSkins));
           renderSkins();
-          showToast('🏆 Boss besiegt! Neues Brett freigeschaltet: '+(SKINS.find(x=>x.id===skinId).name),3000);
+          const names = newlyUnlocked.map(id => SKINS.find(skin => skin.id === id).name).join(', ');
+          showToast('🏆 Boss besiegt! Neue Schläger-Designs: ' + names,3000);
         } else showToast('🏆 Boss besiegt!',1800);
         boss=null; rockets=[];
       }
