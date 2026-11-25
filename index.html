@@ -119,6 +119,15 @@
     #finish-panel p { margin: 8px 0; color: #eee; font-size: 14px; }
     .panel-actions { display: flex; flex-wrap: wrap; justify-content: center; gap: 9px; margin-top: 16px; }
     .small-note { color: #a9a9c2 !important; font-size: 11px !important; line-height: 1.4; }
+    #shop-panel, #transfer-panel { display:none; position:fixed; z-index:70; }
+    #shop-list { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:9px; margin-top:12px; text-align:left; }
+    .shop-item { display:flex; flex-direction:column; gap:6px; min-width:0; padding:9px; background:#19192b; border:1px solid #41415e; border-radius:11px; }
+    .shop-item .skin-preview { flex:none; }
+    .shop-item button { padding:8px 6px; font-size:12px; }
+    #shop-list-wrap { max-height:55dvh; overflow:auto; }
+    #transfer-code { width:100%; min-height:110px; resize:vertical; margin:10px 0; padding:10px; border-radius:10px; background:#10101c; color:#fff; border:1px solid #57577d; font:12px monospace; user-select:text; -webkit-user-select:text; }
+    @keyframes flame-preview { to { filter:brightness(1.35); background-position:100% 50%; } }
+    .skin-preview.style-flame { background:linear-gradient(90deg,#491006,#ff4a0b,#ffe25a,#f72508,#491006); background-size:220% 100%; animation:flame-preview .45s infinite alternate; box-shadow:0 0 9px #ff650e; }
     @media (max-height: 620px) {
       .panel { padding: 18px; }
       #menu h1 { font-size: 42px; }
@@ -134,6 +143,9 @@
     <input id="player-name" maxlength="18" autocomplete="nickname" placeholder="Name eingeben">
     <button class="menu-btn" id="menu-play" type="button">▶ SPIELEN</button>
     <button class="secondary-btn" id="resume-play" type="button" hidden>▶ GESPEICHERTEN LEVEL FORTSETZEN</button>
+    <button class="secondary-btn" id="shop-open" type="button">🛒 RIESIGER SCHLÄGER-SHOP</button>
+    <button class="secondary-btn" id="transfer-open" type="button">🔐 SPIELSTAND-CODE</button>
+    <div id="shop-balance" class="local-note">Shop-Punkte: 0</div>
     <div class="skin-row"><label for="skin-select">Dein Schläger-Design</label><select id="skin-select"><option value="green">Grün (Start)</option></select></div>
     <button class="secondary-btn" id="skin-gallery-toggle" type="button">🎨 ALLE SCHLÄGER ANSEHEN</button>
     <div id="skin-gallery" class="skin-gallery" hidden></div>
@@ -147,6 +159,25 @@
     </div>
   </div>
 
+  <div id="shop-panel" class="panel">
+    <h2>🛒 Untis-Shop</h2>
+    <p class="subtitle">Mit erspielten Punkten kannst du neue Schläger kaufen.</p>
+    <div id="shop-balance-panel" class="local-note"></div>
+    <div id="shop-list-wrap"><div id="shop-list"></div></div>
+    <div class="panel-actions"><button class="secondary-btn" id="shop-close" type="button">ZURÜCK</button></div>
+  </div>
+  <div id="transfer-panel" class="panel">
+    <h2>🔐 Spielstand übertragen</h2>
+    <p class="small-note">Erzeuge einen langen Code, um Level, Punkte, Highscore und Schläger auf ein anderes Gerät mitzunehmen. Kopiere ihn und bewahre ihn privat auf. Wer ihn hat, kann deinen Spielstand übernehmen.</p>
+    <textarea id="transfer-code" spellcheck="false" placeholder="Code erstellen oder hier einen erhaltenen Code einfügen"></textarea>
+    <div class="panel-actions">
+      <button class="menu-btn" id="transfer-create" type="button">CODE ERSTELLEN</button>
+      <button class="secondary-btn" id="transfer-copy" type="button">KOPIEREN</button>
+      <button class="secondary-btn" id="transfer-import" type="button">CODE LADEN</button>
+      <button class="secondary-btn" id="transfer-close" type="button">ZURÜCK</button>
+    </div>
+    <p id="transfer-status" class="small-note"></p>
+  </div>
   <div id="upload-box" class="panel">
     <h2>Untis · Screenshot auswählen</h2>
     <p>
@@ -190,6 +221,13 @@
   const uploadBox = $('upload-box');
   const menuPlay = $('menu-play');
   const resumePlay = $('resume-play');
+  const shopPanel = $('shop-panel');
+  const shopList = $('shop-list');
+  const shopBalance = $('shop-balance');
+  const shopBalancePanel = $('shop-balance-panel');
+  const transferPanel = $('transfer-panel');
+  const transferCode = $('transfer-code');
+  const transferStatus = $('transfer-status');
   const playerNameInput = $('player-name');
   const skinSelect = $('skin-select');
   const skinGalleryToggle = $('skin-gallery-toggle');
@@ -221,6 +259,7 @@
   const SAVED_IMAGE_STORE = 'assets';
   const SAVED_AREA_KEY = 'untis-blockbreaker-saved-area-v1';
   const SKINS_KEY = 'untis-blockbreaker-skins-v1';
+  const SHOP_POINTS_KEY = 'untis-blockbreaker-shop-points-v1';
   const SKINS = [
     { id:'green', name:'Grün', top:'#66ffb0', bottom:'#00a85a', edge:'#063f29' },
     { id:'blue', name:'Blau', top:'#8be7ff', bottom:'#1675d1', edge:'#07365c', unlockLevel:100 },
@@ -243,6 +282,30 @@
     { id:'racer', name:'Street Racer', top:'#f1f1f1', bottom:'#d33952', edge:'#202436', pattern:'racer', unlockLevel:1800 },
     { id:'germany', name:'Deutschland', top:'#ffe05e', bottom:'#c62032', edge:'#161616', pattern:'germany', unlockLevel:1900 }
   ];
+  const FLAME_THEMES = [
+    ['Drachenzorn','#ffe27a','#e52b06','#611008','#fff07a','#ff4a08'], ['Polarfeuer','#e7ffff','#29c9ff','#07507d','#fff','#4beeff'],
+    ['Violette Flamme','#ffc1ff','#a000ff','#38005e','#ffe4ff','#d52bff'], ['Smaragdbrand','#c5ffad','#35c92d','#07521b','#ffff9a','#72ff3e'],
+    ['Sonnensturm','#fff7a0','#ff9a00','#7b2600','#fffbd0','#ff6b00'], ['Blauer Blitzbrand','#d5f7ff','#167cff','#08265f','#f4ffff','#39c8ff'],
+    ['Rosenfeuer','#ffd1e8','#fb287c','#68103a','#fff0fa','#ff5ca9'], ['Meeresflamme','#a6fff1','#00a89c','#064d50','#eaffff','#28ffe1'],
+    ['Goldfunken','#fff4a1','#d59400','#684000','#fffbd1','#ffbc19'], ['Nebelbrand','#e5d8ff','#6754db','#29205e','#fff','#a598ff'],
+    ['Kometenfeuer','#ffbcb0','#fb3e2c','#711014','#fff4ba','#ff4b12'], ['Giftflamme','#e2ff8c','#79bd00','#315000','#faffbe','#adff25'],
+    ['Kristallbrand','#e7fcff','#75baff','#275684','#fff','#9af4ff'], ['Dunkelfeuer','#ff7b99','#710a48','#26082f','#ffb9de','#d31357'],
+    ['Regenbogenbrand','#fff68a','#8c36e8','#251257','#fff','#ff4aa0'], ['Kupferbrand','#ffe1a8','#bd5421','#5c1b12','#fff0ba','#ff752d'],
+    ['Mintfeuer','#d0fff0','#35b98a','#075442','#fff','#65ffd2'], ['Lavendelbrand','#f1d0ff','#8956c9','#3c1765','#fff2ff','#c862ff'],
+    ['Rubinfeuer','#ffc0c6','#d31138','#62091e','#fff','#ff405d'], ['Eisblaues Feuer','#d8f9ff','#42a3de','#14416e','#fff','#91edff'],
+    ['Sternenbrand','#fff2a6','#ed6c25','#521451','#fff','#ffb236'], ['Waldgeisterfeuer','#dcff9e','#398344','#0c422c','#ffffce','#85ff6a'],
+    ['Elektrisches Feuer','#c4ffff','#00d2db','#06466a','#fff','#62ffff'], ['Magmawirbel','#ffd17a','#c52a11','#4b100e','#fff397','#ff3d13'],
+    ['Pinkes Drachenfeuer','#ffe0f1','#e624bf','#561052','#fff','#ff71e6'], ['Silberflamme','#fff','#8799b9','#343f5a','#fff','#d8f5ff'],
+    ['Bernsteinfeuer','#fff0a5','#e88910','#773209','#fff9cb','#ff9f20'], ['Blütenbrand','#fff0cc','#e65c75','#741f47','#fff','#ff97a7'],
+    ['Himmelsfeuer','#d4ebff','#557bdc','#26285f','#fff','#95baff'], ['Höllenwirbel','#ffd1a3','#ff3500','#530708','#fff78a','#ff4500'],
+    ['Mondfeuer','#e9e2ff','#7562bc','#302556','#fff','#a18eff'], ['Zuckerwattebrand','#ffd8fa','#e94cce','#6d1768','#fff','#ff89e8']
+  ];
+  FLAME_THEMES.forEach((theme, i) => {
+    const unlockLevel = i < 15 ? (i + 1) * 15 : null;
+    SKINS.push({ id:'flame-' + (i + 1), name:theme[0], top:theme[1], bottom:theme[2], edge:theme[3],
+      flames:[theme[4],theme[5]], pattern:'flame',
+      ...(unlockLevel ? { unlockLevel } : { price:3000 + (i - 15) * 1800 }) });
+  });
   const HIGH_KEY = 'untis-blockbreaker-highscore-v3';
   const LEADER_KEY = 'untis-blockbreaker-leaderboard-v3';
   const NAME_KEY = 'untis-blockbreaker-playername-v3';
@@ -250,6 +313,7 @@
   let playerName = safeGet(NAME_KEY, '') || '';
   playerNameInput.value = playerName;
   let highscore = Number(safeGet(HIGH_KEY, '0')) || 0;
+  let shopPoints = Number(safeGet(SHOP_POINTS_KEY, '0')) || 0;
   highscoreMenu.textContent = String(highscore);
 
   let area = null;
@@ -369,6 +433,45 @@
     bgImg.src = imageObjectUrl;
   }
   resumePlay.addEventListener('click', resumeSavedRun);
+  function updateShopBalance() {
+    const label = 'Shop-Punkte: ' + shopPoints.toLocaleString('de-DE');
+    shopBalance.textContent = label;
+    shopBalancePanel.textContent = label;
+  }
+  function renderShop() {
+    updateShopBalance();
+    shopList.replaceChildren();
+    SKINS.filter(skin => !unlockedSkins.includes(skin.id)).forEach(skin => {
+      const price = skin.price || Math.max(1200, (skin.unlockLevel || 1) * 90);
+      const item = document.createElement('div');
+      item.className = 'shop-item';
+      const preview = document.createElement('div');
+      preview.className = 'skin-preview' + (skin.pattern ? ' style-' + skin.pattern : '');
+      preview.style.setProperty('--skin-top', skin.top);
+      preview.style.setProperty('--skin-bottom', skin.bottom);
+      preview.style.setProperty('--skin-edge', skin.edge);
+      const name = document.createElement('strong');
+      name.textContent = skin.name;
+      const buy = document.createElement('button');
+      buy.className = 'secondary-btn';
+      buy.type = 'button';
+      buy.textContent = 'Kaufen · ' + price.toLocaleString('de-DE') + ' Punkte';
+      buy.disabled = shopPoints < price;
+      buy.addEventListener('click', () => {
+        if (shopPoints < price) { showToast('Dafür brauchst du noch mehr Shop-Punkte.'); return; }
+        shopPoints -= price;
+        safeSet(SHOP_POINTS_KEY, shopPoints);
+        unlockedSkins = [...new Set([...unlockedSkins, skin.id])];
+        safeSet(SKINS_KEY, JSON.stringify(unlockedSkins));
+        renderSkins();
+        renderShop();
+        showToast('✨ ' + skin.name + ' gekauft und freigeschaltet!');
+      });
+      item.append(preview, name, buy);
+      shopList.appendChild(item);
+    });
+    if (!shopList.children.length) shopList.textContent = 'Alles gekauft! Besiege weitere Bosse für neue Schläger.';
+  }
   function renderSkins() {
     skinSelect.replaceChildren();
     SKINS.filter(skin => unlockedSkins.includes(skin.id)).forEach(skin => {
@@ -395,7 +498,7 @@
       name.textContent = skin.name;
       const status = document.createElement('div');
       status.className = 'skin-status';
-      status.textContent = unlocked ? 'Freigeschaltet' : 'Boss Level ' + skin.unlockLevel;
+      status.textContent = unlocked ? 'Freigeschaltet' : (skin.unlockLevel ? 'Boss Level ' + skin.unlockLevel + ' oder Shop' : 'Im Shop erhältlich');
       card.append(preview, name, status);
       skinGallery.appendChild(card);
     });
@@ -409,6 +512,11 @@
     skinGalleryToggle.textContent = skinGallery.hidden ? '🎨 ALLE SCHLÄGER ANSEHEN' : '🎨 SCHLÄGER AUSBLENDEN';
   });
   renderSkins();
+  renderShop();
+  $('shop-open').addEventListener('click', () => { menu.style.display='none'; shopPanel.style.display='block'; renderShop(); });
+  $('shop-close').addEventListener('click', () => { shopPanel.style.display='none'; menu.style.display='block'; });
+  $('transfer-open').addEventListener('click', () => { menu.style.display='none'; transferPanel.style.display='block'; transferStatus.textContent=''; });
+  $('transfer-close').addEventListener('click', () => { transferPanel.style.display='none'; menu.style.display='block'; });
 
   function safeGet(key, fallback) {
     try { const value = localStorage.getItem(key); return value === null ? fallback : value; }
@@ -477,6 +585,59 @@
   renderLeaderboard();
   updateResumeButton();
 
+  function bytesToCode(bytes) {
+    let binary = '';
+    for (const byte of bytes) binary += String.fromCharCode(byte);
+    return btoa(binary).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/g,'');
+  }
+  function codeToBytes(text) {
+    const padded = text.replace(/-/g,'+').replace(/_/g,'/') + '='.repeat((4-text.length%4)%4);
+    return Uint8Array.from(atob(padded), ch => ch.charCodeAt(0));
+  }
+  async function createTransferCode() {
+    if (!crypto.subtle) throw new Error('Sichere Verschlüsselung ist auf diesem Gerät nicht verfügbar.');
+    const rawKey = crypto.getRandomValues(new Uint8Array(32));
+    const iv = crypto.getRandomValues(new Uint8Array(12));
+    const key = await crypto.subtle.importKey('raw',rawKey,{name:'AES-GCM'},false,['encrypt']);
+    const payload = {version:2,progress:loadProgress()||{level:1,score:0,playerHp:50},highscore,shopPoints,playerName,unlockedSkins,selectedSkin};
+    const encrypted = await crypto.subtle.encrypt({name:'AES-GCM',iv},key,new TextEncoder().encode(JSON.stringify(payload)));
+    return 'UNTIS2.'+bytesToCode(rawKey)+'.'+bytesToCode(iv)+'.'+bytesToCode(new Uint8Array(encrypted));
+  }
+  async function importTransferCode(code) {
+    const parts=code.trim().split('.');
+    if (parts.length!==4 || parts[0]!=='UNTIS2') throw new Error('Der Code ist unvollständig oder hat das falsche Format.');
+    const rawKey=codeToBytes(parts[1]), iv=codeToBytes(parts[2]), encrypted=codeToBytes(parts[3]);
+    if (rawKey.length!==32 || iv.length!==12) throw new Error('Der Code ist ungültig.');
+    const key=await crypto.subtle.importKey('raw',rawKey,{name:'AES-GCM'},false,['decrypt']);
+    const plain=await crypto.subtle.decrypt({name:'AES-GCM',iv},key,encrypted);
+    const data=JSON.parse(new TextDecoder().decode(plain));
+    if (!data || data.version!==2 || !data.progress || !Number.isFinite(data.progress.level) ||
+        data.progress.level<1 || data.progress.level>MAX_LEVEL) throw new Error('Der Code enthält keinen gültigen Spielstand.');
+    if (loadProgress() && !confirm('Dein vorhandener Spielstand wird ersetzt. Möchtest du fortfahren?')) return false;
+    safeSet(PROGRESS_KEY,JSON.stringify(data.progress));
+    highscore=Math.max(0,Number(data.highscore)||0); safeSet(HIGH_KEY,highscore);
+    shopPoints=Math.max(0,Number(data.shopPoints)||0); safeSet(SHOP_POINTS_KEY,shopPoints);
+    playerName=String(data.playerName||'').slice(0,18); playerNameInput.value=playerName; safeSet(NAME_KEY,playerName);
+    const valid=Array.isArray(data.unlockedSkins)?data.unlockedSkins.filter(id=>SKINS.some(s=>s.id===id)):[];
+    unlockedSkins=[...new Set(['green',...valid])]; safeSet(SKINS_KEY,JSON.stringify(unlockedSkins));
+    selectedSkin=unlockedSkins.includes(data.selectedSkin)?data.selectedSkin:'green';
+    safeSet('untis-blockbreaker-selected-skin-v1',selectedSkin);
+    highscoreMenu.textContent=highscore.toLocaleString('de-DE');
+    renderSkins(); renderShop(); renderLeaderboard(); updateResumeButton();
+    return true;
+  }
+  $('transfer-create').addEventListener('click',async()=>{try{
+    transferCode.value=await createTransferCode();
+    transferStatus.textContent='Code erstellt. Kopiere ihn und bewahre ihn sicher auf.';
+  }catch(e){transferStatus.textContent=e.message||'Code konnte nicht erstellt werden.';}});
+  $('transfer-copy').addEventListener('click',async()=>{try{
+    await navigator.clipboard.writeText(transferCode.value);
+    transferStatus.textContent='Code kopiert.';
+  }catch(_){transferCode.focus();transferCode.select();transferStatus.textContent='Bitte markiere den Code und kopiere ihn.';}});
+  $('transfer-import').addEventListener('click',async()=>{try{
+    const imported=await importTransferCode(transferCode.value);
+    transferStatus.textContent=imported?'Spielstand geladen. Wähle auf diesem Gerät dein Bild einmal aus.':'Import abgebrochen.';
+  }catch(e){transferStatus.textContent=e.message||'Der Code konnte nicht geladen werden.';}});
   function showToast(message, ms = 3200) {
     toast.textContent = message;
     toast.style.display = 'block';
@@ -491,6 +652,9 @@
   function addScore(basePoints) {
     const points = Math.max(0, Math.round(basePoints * multiplier()));
     score += points;
+    shopPoints += points;
+    safeSet(SHOP_POINTS_KEY,shopPoints);
+    if (shopPanel.style.display==='block') renderShop(); else updateShopBalance();
     if (score > highscore) {
       highscore = score;
       safeSet(HIGH_KEY, highscore);
@@ -723,9 +887,16 @@
     clearTimeout(resetTimer);
     powerups = [];
     rockets = [];
-    const bossNumber = Math.floor(level / 100);
-    const bossHp = 100 + Math.max(0, bossNumber - 1) * 40;
-    boss = level % 100 === 0 ? { x: canvas.width * 0.5, y: Math.max(62, canvas.height * 0.16), w: Math.min(canvas.width * 0.42, 180), h: Math.max(34, canvas.height * 0.075), hp:bossHp, maxHp:bossHp, dir:1 } : null;
+    const bossNumber = Math.floor(level / 15);
+    const bossHp = 100 + Math.max(0,bossNumber-1)*8;
+    const hue = (bossNumber*137.508)%360;
+    const names = ['Glutwächter','Eisdrachen','Sturmkoloss','Schattenkönig','Kristallbestie','Sternenwolf','Magma-Titan','Donnerfalke','Nebelgeist','Drachenfürst','Frost-Riese','Sonnenwächter'];
+    boss = level%15===0 ? {
+      number:bossNumber, kind:(bossNumber-1)%6, name:names[(bossNumber-1)%names.length]+' #'+bossNumber,
+      color:'hsl('+hue+',85%,58%)', shadow:'hsl('+hue+',75%,24%)', glow:'hsl('+hue+',100%,88%)',
+      x:canvas.width*.5, y:Math.max(62,canvas.height*.16), w:Math.min(canvas.width*.42,180),
+      h:Math.max(34,canvas.height*.075), hp:bossHp, maxHp:bossHp, dir:1
+    } : null;
     lastRocketAt = Date.now();
     speedFactor = Math.min(2.4, 1 + Math.min(level - 1, 1000) * 0.00115 + Math.max(0, level - 1000) * 0.00025);
     Object.assign(canvas.style, { left: area.x + 'px', top: area.y + 'px', display: 'block' });
@@ -1003,6 +1174,30 @@
     drawRoundedRect(x, y, w, h, 7);
     ctx.stroke();
     ctx.restore();
+    if (skin.pattern==='flame') drawPaddleFlames(skin,x,y,w,h);
+  }
+
+  function drawPaddleFlames(skin,x,y,w,h) {
+    const colors=skin.flames||['#fff2a8','#ff4b08'], count=Math.max(5,Math.floor(w/12)), segment=w/count;
+    const phase=Date.now()/95;
+    ctx.save();
+    for(let i=0;i<count;i++){
+      const cx=x+segment*(i+.5), flicker=.55+.45*Math.abs(Math.sin(phase+i*1.73));
+      const height=h*(1.25+1.7*flicker), sway=Math.sin(phase*.8+i*2.2)*segment*.2;
+      const flame=ctx.createLinearGradient(cx,y-height,cx,y+h);
+      flame.addColorStop(0,colors[0]); flame.addColorStop(.48,colors[1]); flame.addColorStop(1,skin.bottom);
+      ctx.fillStyle=flame; ctx.beginPath();
+      ctx.moveTo(cx-segment*.43,y+h*.45);
+      ctx.quadraticCurveTo(cx-segment*.18,y-height*.25,cx+sway,y-height);
+      ctx.quadraticCurveTo(cx+segment*.08,y-height*.28,cx+segment*.43,y+h*.45);
+      ctx.closePath(); ctx.fill();
+      ctx.fillStyle=colors[0]; ctx.beginPath();
+      ctx.moveTo(cx-segment*.2,y+h*.3);
+      ctx.quadraticCurveTo(cx+sway*.5,y-height*.15,cx+sway*.45,y-height*.58);
+      ctx.quadraticCurveTo(cx+segment*.23,y-height*.1,cx+segment*.2,y+h*.3);
+      ctx.closePath(); ctx.fill();
+    }
+    ctx.restore();
   }
 
   function drawPaddlePattern(skin, x, y, w, h) {
@@ -1101,22 +1296,40 @@
     if (!boss) return;
     boss.x += boss.dir * Math.max(1.1, canvas.width * 0.0022);
     if (boss.x - boss.w/2 < 5 || boss.x + boss.w/2 > canvas.width - 5) boss.dir *= -1;
-    const bossNumber = Math.floor(level / 100);
-    const rocketInterval = Math.max(900, 1700 - (bossNumber - 1) * 85);
+    const bossNumber = boss.number;
+    const rocketInterval = Math.max(820,1700-(bossNumber-1)*7);
     if (now - lastRocketAt > rocketInterval) {
-      const rocketSpeed = Math.max(2.2, canvas.height * 0.0045) * (1 + (bossNumber - 1) * 0.04);
-      rockets.push({ x: boss.x, y: boss.y + boss.h/2, dy: rocketSpeed });
+      const rocketSpeed=Math.max(2.2,canvas.height*.0045)*(1+(bossNumber-1)*.008);
+      if (boss.kind%3===1) {
+        rockets.push({x:boss.x-boss.w*.22,y:boss.y+boss.h/2,dy:rocketSpeed});
+        rockets.push({x:boss.x+boss.w*.22,y:boss.y+boss.h/2,dy:rocketSpeed});
+      } else rockets.push({x:boss.x,y:boss.y+boss.h/2,dy:rocketSpeed});
       lastRocketAt = now;
     }
     ctx.save();
-    const g = ctx.createLinearGradient(boss.x-boss.w/2,boss.y-boss.h/2,boss.x+boss.w/2,boss.y+boss.h/2);
-    g.addColorStop(0,'#ff8a80'); g.addColorStop(1,'#9b1028');
-    ctx.fillStyle = g; ctx.strokeStyle = '#ffd6d6'; ctx.lineWidth = 2;
-    drawRoundedRect(boss.x-boss.w/2,boss.y-boss.h/2,boss.w,boss.h,12); ctx.fill(); ctx.stroke();
+    const bx=boss.x-boss.w/2, by=boss.y-boss.h/2;
+    const g=ctx.createLinearGradient(bx,by,bx+boss.w,by+boss.h);
+    g.addColorStop(0,boss.glow); g.addColorStop(.42,boss.color); g.addColorStop(1,boss.shadow);
+    ctx.fillStyle=g; ctx.strokeStyle=boss.glow; ctx.lineWidth=2.5; ctx.shadowColor=boss.color; ctx.shadowBlur=12;
+    ctx.beginPath();
+    if (boss.kind===1) {
+      ctx.moveTo(boss.x-boss.w*.42,boss.y); ctx.lineTo(boss.x-boss.w*.28,by); ctx.lineTo(boss.x+boss.w*.28,by);
+      ctx.lineTo(boss.x+boss.w*.42,boss.y); ctx.lineTo(boss.x+boss.w*.28,by+boss.h); ctx.lineTo(boss.x-boss.w*.28,by+boss.h); ctx.closePath();
+    } else if (boss.kind===2) ctx.ellipse(boss.x,boss.y,boss.w*.48,boss.h*.58,0,0,Math.PI*2);
+    else if (boss.kind===3) {
+      ctx.moveTo(boss.x,boss.y-boss.h*.68); ctx.lineTo(boss.x+boss.w*.5,boss.y-boss.h*.18);
+      ctx.lineTo(boss.x+boss.w*.35,boss.y+boss.h*.48); ctx.lineTo(boss.x,boss.y+boss.h*.65);
+      ctx.lineTo(boss.x-boss.w*.35,boss.y+boss.h*.48); ctx.lineTo(boss.x-boss.w*.5,boss.y-boss.h*.18); ctx.closePath();
+    } else if (boss.kind===4) {
+      ctx.moveTo(bx,boss.y); ctx.lineTo(bx+boss.w*.14,by); ctx.lineTo(bx+boss.w*.3,boss.y-boss.h*.18);
+      ctx.lineTo(bx+boss.w*.48,by); ctx.lineTo(bx+boss.w*.64,boss.y-boss.h*.18); ctx.lineTo(bx+boss.w,boss.y);
+      ctx.lineTo(bx+boss.w*.84,by+boss.h); ctx.lineTo(bx+boss.w*.15,by+boss.h); ctx.closePath();
+    } else drawRoundedRect(bx,by,boss.w,boss.h,12);
+    ctx.fill(); ctx.stroke(); ctx.shadowBlur=0;
     ctx.fillStyle='#fff'; ctx.textAlign='center'; ctx.textBaseline='middle';
-    ctx.font='bold '+Math.max(13,boss.h*.42)+'px sans-serif'; ctx.fillText('BOSS',boss.x,boss.y);
+    ctx.font='bold '+Math.max(9,Math.min(13,boss.h*.26))+'px sans-serif'; ctx.fillText(boss.name,boss.x,boss.y);
     ctx.fillStyle='#321018'; ctx.fillRect(boss.x-boss.w/2,boss.y-boss.h/2-12,boss.w,7);
-    ctx.fillStyle='#ff465f'; ctx.fillRect(boss.x-boss.w/2,boss.y-boss.h/2-12,boss.w*(boss.hp/boss.maxHp),7);
+    ctx.fillStyle=boss.color; ctx.fillRect(boss.x-boss.w/2,boss.y-boss.h/2-12,boss.w*(boss.hp/boss.maxHp),7);
     ctx.restore();
     for (let i=rockets.length-1;i>=0;i--) {
       const rocket=rockets[i]; rocket.y += rocket.dy;
@@ -1275,6 +1488,12 @@
     const bonusAwarded = addScore(rawBonus);
     levelTimeBonus = bonusAwarded;
     saveLeaderboard();
+    if (level%15===0) {
+      const earned=SKINS.filter(skin=>skin.unlockLevel&&skin.unlockLevel<=level).map(skin=>skin.id);
+      unlockedSkins=[...new Set([...unlockedSkins,...earned])];
+      safeSet(SKINS_KEY,JSON.stringify(unlockedSkins));
+      renderSkins(); renderShop();
+    }
     if (level < MAX_LEVEL) {
       saveProgress();
       const p = loadProgress();
