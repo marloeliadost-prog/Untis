@@ -126,6 +126,12 @@
     .shop-item button { padding:8px 6px; font-size:12px; }
     #shop-list-wrap { max-height:55dvh; overflow:auto; }
     #transfer-code { width:100%; min-height:110px; resize:vertical; margin:10px 0; padding:10px; border-radius:10px; background:#10101c; color:#fff; border:1px solid #57577d; font:12px monospace; user-select:text; -webkit-user-select:text; }
+    #ball-shop-list,#shop-extras { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:9px; margin:12px 0; text-align:left; }
+    #wheel-panel { display:none; position:fixed; z-index:75; }
+    #wheel-canvas { display:block; width:min(78vw,320px); height:min(78vw,320px); margin:6px auto 16px; transition:transform 5s cubic-bezier(.12,.78,.12,1); }
+    #wheel-pointer { text-align:center; color:#ffd66b; font-size:28px; height:20px; margin-top:8px; }
+    .shop-section-title { color:#ffd66b; text-align:left; margin:12px 0 4px; font-size:16px; }
+    #daily-spin { width:100%; }
     @keyframes flame-preview { to { filter:brightness(1.35); background-position:100% 50%; } }
     .skin-preview.style-flame { background:linear-gradient(90deg,#491006,#ff4a0b,#ffe25a,#f72508,#491006); background-size:220% 100%; animation:flame-preview .45s infinite alternate; box-shadow:0 0 9px #ff650e; }
     @media (max-height: 620px) {
@@ -145,6 +151,7 @@
     <button class="secondary-btn" id="resume-play" type="button" hidden>▶ GESPEICHERTEN LEVEL FORTSETZEN</button>
     <button class="secondary-btn" id="shop-open" type="button">🛒 RIESIGER SCHLÄGER-SHOP</button>
     <button class="secondary-btn" id="transfer-open" type="button">🔐 SPIELSTAND-CODE</button>
+    <button class="secondary-btn" id="wheel-open" type="button">🎡 TÄGLICHES GLÜCKSRAD</button>
     <div id="shop-balance" class="local-note">Shop-Punkte: 0</div>
     <div class="skin-row"><label for="skin-select">Dein Schläger-Design</label><select id="skin-select"><option value="green">Grün (Start)</option></select></div>
     <button class="secondary-btn" id="skin-gallery-toggle" type="button">🎨 ALLE SCHLÄGER ANSEHEN</button>
@@ -163,7 +170,9 @@
     <h2>🛒 Untis-Shop</h2>
     <p class="subtitle">Mit erspielten Punkten kannst du neue Schläger kaufen.</p>
     <div id="shop-balance-panel" class="local-note"></div>
+    <h3 class="shop-section-title">Schläger-Designs</h3>
     <div id="shop-list-wrap"><div id="shop-list"></div></div>
+    <h3 class="shop-section-title">Spezialbälle</h3><div id="ball-shop-list"></div><div id="shop-extras"></div>
     <div class="panel-actions"><button class="secondary-btn" id="shop-close" type="button">ZURÜCK</button></div>
   </div>
   <div id="transfer-panel" class="panel">
@@ -177,6 +186,12 @@
       <button class="secondary-btn" id="transfer-close" type="button">ZURÜCK</button>
     </div>
     <p id="transfer-status" class="small-note"></p>
+  </div>
+  <div id="wheel-panel" class="panel">
+    <h2>🎡 Glücksrad</h2><p class="small-note">Ein Dreh pro Tag: Nieten, Punkte, Brot, Bälle und seltene Level-Überspringer.</p>
+    <div id="wheel-pointer">▼</div><canvas id="wheel-canvas" width="360" height="360"></canvas>
+    <button class="menu-btn" id="daily-spin" type="button">TÄGLICH DREHEN</button><p id="wheel-result" class="small-note"></p>
+    <div class="panel-actions"><button class="secondary-btn" id="wheel-close" type="button">ZURÜCK</button></div>
   </div>
   <div id="upload-box" class="panel">
     <h2>Untis · Screenshot auswählen</h2>
@@ -222,7 +237,9 @@
   const menuPlay = $('menu-play');
   const resumePlay = $('resume-play');
   const shopPanel = $('shop-panel');
-  const shopList = $('shop-list');
+  const shopList=$('shop-list'), ballShopList=$('ball-shop-list'), shopExtras=$('shop-extras');
+  const wheelPanel=$('wheel-panel'), wheelCanvas=$('wheel-canvas'), wheelCtx=wheelCanvas.getContext('2d');
+  const wheelSpinButton=$('daily-spin'), wheelResult=$('wheel-result');
   const shopBalance = $('shop-balance');
   const shopBalancePanel = $('shop-balance-panel');
   const transferPanel = $('transfer-panel');
@@ -259,7 +276,28 @@
   const SAVED_IMAGE_STORE = 'assets';
   const SAVED_AREA_KEY = 'untis-blockbreaker-saved-area-v1';
   const SKINS_KEY = 'untis-blockbreaker-skins-v1';
-  const SHOP_POINTS_KEY = 'untis-blockbreaker-shop-points-v1';
+  const SHOP_POINTS_KEY='untis-blockbreaker-shop-points-v1';
+  const BALLS_KEY='untis-blockbreaker-balls-v1', SELECTED_BALL_KEY='untis-blockbreaker-selected-ball-v1';
+  const SKIP_TOKENS_KEY='untis-blockbreaker-level-skips-v1', WHEEL_DATE_KEY='untis-blockbreaker-wheel-date-v1', WHEEL_RESULT_KEY='untis-blockbreaker-wheel-result-v1';
+  const BALL_STYLES=[
+    {id:'classic',name:'Klassisch',top:'#fff',bottom:'#e53935',glow:'#ff453a',price:0,shape:'circle'},
+    {id:'ice-orb',name:'Eiskristall',top:'#fff',bottom:'#30cfff',glow:'#61eaff',price:18000,shape:'diamond'},
+    {id:'nova',name:'Nova',top:'#fff8bc',bottom:'#ff9900',glow:'#ffb52e',price:32000,shape:'star'},
+    {id:'toxic',name:'Giftkugel',top:'#f5ff9a',bottom:'#46d600',glow:'#a6ff00',price:48000,shape:'hex'},
+    {id:'galaxy-orb',name:'Galaxie',top:'#ffd4ff',bottom:'#7624dd',glow:'#be74ff',price:72000,shape:'circle'},
+    {id:'neon-orb',name:'Neon',top:'#fff',bottom:'#00cdd3',glow:'#00fff0',price:98000,shape:'diamond'},
+    {id:'shadow-orb',name:'Schatten',top:'#c8c8d8',bottom:'#242339',glow:'#a88aff',price:135000,shape:'hex'},
+    {id:'gold-orb',name:'Goldkugel',top:'#fffac1',bottom:'#e7a600',glow:'#ffd332',price:190000,shape:'star'},
+    {id:'rainbow-orb',name:'Regenbogen',top:'#fff',bottom:'#ed36bd',glow:'#ff72e1',price:260000,shape:'circle'}
+  ];
+  const WHEEL_PRIZES=[
+    {type:'miss',label:'Niete',color:'#49495e'},{type:'points',amount:5000,label:'+5.000',color:'#258273'},
+    {type:'miss',label:'Niete',color:'#49495e'},{type:'bread',label:'Brot +10❤️',color:'#bd7b27'},
+    {type:'points',amount:20000,label:'+20.000',color:'#318d42'},{type:'miss',label:'Niete',color:'#49495e'},
+    {type:'skip',label:'Level-Sprung',color:'#8136c2'},{type:'points',amount:50000,label:'+50.000',color:'#c6921e'},
+    {type:'bread',label:'Brot +10❤️',color:'#bd7b27'},{type:'miss',label:'Niete',color:'#49495e'},
+    {type:'ball',label:'Spezialball',color:'#1389a5'},{type:'points',amount:10000,label:'+10.000',color:'#258273'}
+  ];
   const SKINS = [
     { id:'green', name:'Grün', top:'#66ffb0', bottom:'#00a85a', edge:'#063f29' },
     { id:'blue', name:'Blau', top:'#8be7ff', bottom:'#1675d1', edge:'#07365c', unlockLevel:100 },
@@ -304,7 +342,7 @@
     const unlockLevel = i < 15 ? (i + 1) * 15 : null;
     SKINS.push({ id:'flame-' + (i + 1), name:theme[0], top:theme[1], bottom:theme[2], edge:theme[3],
       flames:[theme[4],theme[5]], pattern:'flame',
-      ...(unlockLevel ? { unlockLevel } : { price:3000 + (i - 15) * 1800 }) });
+      ...(unlockLevel ? { unlockLevel } : { price:35000 + (i - 15) * 24000 }) });
   });
   const HIGH_KEY = 'untis-blockbreaker-highscore-v3';
   const LEADER_KEY = 'untis-blockbreaker-leaderboard-v3';
@@ -313,7 +351,12 @@
   let playerName = safeGet(NAME_KEY, '') || '';
   playerNameInput.value = playerName;
   let highscore = Number(safeGet(HIGH_KEY, '0')) || 0;
-  let shopPoints = Number(safeGet(SHOP_POINTS_KEY, '0')) || 0;
+  let shopPoints=Number(safeGet(SHOP_POINTS_KEY,'0'))||0, skipTokens=Number(safeGet(SKIP_TOKENS_KEY,'0'))||0;
+  let unlockedBalls=(()=>{try{return JSON.parse(safeGet(BALLS_KEY,'["classic"]'));}catch(_){return ['classic'];}})();
+  if(!Array.isArray(unlockedBalls))unlockedBalls=['classic'];
+  if(!unlockedBalls.includes('classic'))unlockedBalls.push('classic');
+  let selectedBall=safeGet(SELECTED_BALL_KEY,'classic');
+  if(!unlockedBalls.includes(selectedBall))selectedBall='classic';
   highscoreMenu.textContent = String(highscore);
 
   let area = null;
@@ -364,7 +407,7 @@
     try {
       const p = JSON.parse(localStorage.getItem(PROGRESS_KEY) || 'null');
       if (p && Number.isFinite(p.level) && p.level >= 1 && p.level <= MAX_LEVEL) {
-        return { level: Math.floor(p.level), score: Math.max(0, Number(p.score) || 0), playerHp: clamp(Number(p.playerHp) || 50, 1, 50) };
+        return { level: Math.floor(p.level), score: Math.max(0, Number(p.score) || 0), playerHp: clamp(Number(p.playerHp) || 50, 1, 70) };
       }
     } catch (_) {}
     return null;
@@ -433,16 +476,23 @@
     bgImg.src = imageObjectUrl;
   }
   resumePlay.addEventListener('click', resumeSavedRun);
-  function updateShopBalance() {
-    const label = 'Shop-Punkte: ' + shopPoints.toLocaleString('de-DE');
-    shopBalance.textContent = label;
-    shopBalancePanel.textContent = label;
+  function updateShopBalance(){const label='Shop-Punkte: '+shopPoints.toLocaleString('de-DE');shopBalance.textContent=label;shopBalancePanel.textContent=label+' · Level-Springer: '+skipTokens;}
+  function renderBallShop(){
+    ballShopList.replaceChildren();
+    BALL_STYLES.forEach(ball=>{
+      const owned=unlockedBalls.includes(ball.id),item=document.createElement('div');item.className='shop-item';
+      const preview=document.createElement('div');preview.className='skin-preview';preview.style.background='radial-gradient(circle at 30% 25%,'+ball.top+','+ball.bottom+')';preview.style.borderColor=ball.glow;preview.style.boxShadow='0 0 12px '+ball.glow;
+      const name=document.createElement('strong');name.textContent=ball.name;
+      const button=document.createElement('button');button.className='secondary-btn';button.type='button';button.textContent=owned?(selectedBall===ball.id?'Ausgewählt':'Ausrüsten'):'Kaufen · '+ball.price.toLocaleString('de-DE');button.disabled=!owned&&shopPoints<ball.price;
+      button.addEventListener('click',()=>{if(!unlockedBalls.includes(ball.id)){if(shopPoints<ball.price)return;shopPoints-=ball.price;safeSet(SHOP_POINTS_KEY,shopPoints);unlockedBalls.push(ball.id);safeSet(BALLS_KEY,JSON.stringify(unlockedBalls));}selectedBall=ball.id;safeSet(SELECTED_BALL_KEY,selectedBall);renderBallShop();updateShopBalance();});
+      item.append(preview,name,button);ballShopList.appendChild(item);
+    });
   }
-  function renderShop() {
+  function renderShop(){
     updateShopBalance();
     shopList.replaceChildren();
     SKINS.filter(skin => !unlockedSkins.includes(skin.id)).forEach(skin => {
-      const price = skin.price || Math.max(1200, (skin.unlockLevel || 1) * 90);
+      const price = skin.price || Math.max(30000, (skin.unlockLevel || 1) * 180);
       const item = document.createElement('div');
       item.className = 'shop-item';
       const preview = document.createElement('div');
@@ -470,7 +520,14 @@
       item.append(preview, name, buy);
       shopList.appendChild(item);
     });
-    if (!shopList.children.length) shopList.textContent = 'Alles gekauft! Besiege weitere Bosse für neue Schläger.';
+    if(!shopList.children.length)shopList.textContent='Alles gekauft! Besiege weitere Bosse für neue Schläger.';
+    renderBallShop();shopExtras.replaceChildren();
+    const bread=document.createElement('div');bread.className='shop-item';const breadTitle=document.createElement('strong');breadTitle.textContent='🍞 Brot des Lebens · +10 Leben (max. 70)';
+    const breadBuy=document.createElement('button');breadBuy.className='secondary-btn';breadBuy.type='button';breadBuy.textContent='Kaufen · 24.000 Punkte';breadBuy.disabled=shopPoints<24000;breadBuy.addEventListener('click',buyBread);bread.append(breadTitle,breadBuy);shopExtras.appendChild(bread);
+    const skip=document.createElement('div');skip.className='shop-item';const skipTitle=document.createElement('strong');skipTitle.textContent='⏭ Level-Überspringer · Bestand: '+skipTokens;
+    const skipBuy=document.createElement('button');skipBuy.className='secondary-btn';skipBuy.type='button';skipBuy.textContent='Kaufen · 300.000 Punkte';skipBuy.disabled=shopPoints<300000;
+    skipBuy.addEventListener('click',()=>{if(shopPoints<300000)return;shopPoints-=300000;skipTokens++;safeSet(SHOP_POINTS_KEY,shopPoints);safeSet(SKIP_TOKENS_KEY,skipTokens);renderShop();});
+    const skipUse=document.createElement('button');skipUse.className='secondary-btn';skipUse.type='button';skipUse.textContent='Offenes Level überspringen';skipUse.disabled=skipTokens<1;skipUse.addEventListener('click',useLevelSkip);skip.append(skipTitle,skipBuy,skipUse);shopExtras.appendChild(skip);
   }
   function renderSkins() {
     skinSelect.replaceChildren();
@@ -516,8 +573,22 @@
   $('shop-open').addEventListener('click', () => { menu.style.display='none'; shopPanel.style.display='block'; renderShop(); });
   $('shop-close').addEventListener('click', () => { shopPanel.style.display='none'; menu.style.display='block'; });
   $('transfer-open').addEventListener('click', () => { menu.style.display='none'; transferPanel.style.display='block'; transferStatus.textContent=''; });
+  $('wheel-open').addEventListener('click',()=>{menu.style.display='none';wheelPanel.style.display='block';wheelResult.textContent='';drawDailyWheel();updateWheelButton();});
+  $('wheel-close').addEventListener('click',()=>{wheelPanel.style.display='none';menu.style.display='block';});
   $('transfer-close').addEventListener('click', () => { transferPanel.style.display='none'; menu.style.display='block'; });
 
+  function buyBread(){if(shopPoints<24000){showToast('Dafür brauchst du noch mehr Punkte.');return;}const p=loadProgress()||{level:1,score:0,playerHp:50};if(p.playerHp>=70){showToast('Deine Leben sind schon voll.');return;}shopPoints-=24000;p.playerHp=Math.min(70,p.playerHp+10);safeSet(SHOP_POINTS_KEY,shopPoints);safeSet(PROGRESS_KEY,JSON.stringify(p));playerHp=p.playerHp;renderShop();updateResumeButton();showToast('🍞 Brot gegessen: +10 Leben!');}
+  function useLevelSkip(){const p=loadProgress()||{level:1,score:0,playerHp:50};if(skipTokens<1||p.level>=MAX_LEVEL)return;if(!confirm('Level '+p.level+' überspringen?'))return;p.level=Math.min(MAX_LEVEL,p.level+1);skipTokens--;safeSet(SKIP_TOKENS_KEY,skipTokens);safeSet(PROGRESS_KEY,JSON.stringify(p));renderShop();updateResumeButton();showToast('Level übersprungen. Du kannst beim nächsten Level weiterspielen.');}
+  function localDayKey(){const d=new Date();return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');}
+  function drawDailyWheel(){const cx=180,cy=180,r=169,slice=2*Math.PI/WHEEL_PRIZES.length;wheelCtx.clearRect(0,0,360,360);wheelCtx.save();wheelCtx.translate(cx,cy);
+    WHEEL_PRIZES.forEach((p,i)=>{const start=-Math.PI/2+i*slice;wheelCtx.beginPath();wheelCtx.moveTo(0,0);wheelCtx.arc(0,0,r,start,start+slice);wheelCtx.closePath();wheelCtx.fillStyle=p.color;wheelCtx.fill();wheelCtx.strokeStyle='#fff';wheelCtx.lineWidth=2;wheelCtx.stroke();wheelCtx.save();wheelCtx.rotate(start+slice/2);wheelCtx.fillStyle='#fff';wheelCtx.font='bold 12px sans-serif';wheelCtx.textAlign='right';wheelCtx.textBaseline='middle';wheelCtx.fillText(p.label,r*.88,0,85);wheelCtx.restore();});
+    wheelCtx.beginPath();wheelCtx.arc(0,0,23,0,2*Math.PI);wheelCtx.fillStyle='#ffd66b';wheelCtx.fill();wheelCtx.strokeStyle='#fff';wheelCtx.lineWidth=3;wheelCtx.stroke();wheelCtx.restore();}
+  function updateWheelButton(){const used=safeGet(WHEEL_DATE_KEY,'')===localDayKey();wheelSpinButton.disabled=used;wheelSpinButton.textContent=used?'MORGEN WIEDER DREHEN':'TÄGLICH DREHEN';if(used)wheelResult.textContent=safeGet(WHEEL_RESULT_KEY,'Du hast heute schon gedreht.');}
+  function grantBread(){const p=loadProgress()||{level:1,score:0,playerHp:50};p.playerHp=Math.min(70,p.playerHp+10);safeSet(PROGRESS_KEY,JSON.stringify(p));playerHp=p.playerHp;updateResumeButton();}
+  function grantWheelPrize(p){if(p.type==='points'){shopPoints+=p.amount;safeSet(SHOP_POINTS_KEY,shopPoints);}else if(p.type==='bread')grantBread();else if(p.type==='skip'){skipTokens++;safeSet(SKIP_TOKENS_KEY,skipTokens);}else if(p.type==='ball'){const b=BALL_STYLES.find(x=>x.id!=='classic'&&!unlockedBalls.includes(x.id));if(b){unlockedBalls.push(b.id);safeSet(BALLS_KEY,JSON.stringify(unlockedBalls));}else{shopPoints+=25000;safeSet(SHOP_POINTS_KEY,shopPoints);}}renderShop();return p.type==='miss'?'Niete – diesmal kein Gewinn.':p.type==='points'?'Gewonnen: '+p.amount.toLocaleString('de-DE')+' Punkte!':p.type==='bread'?'Brot gewonnen: +10 Leben!':p.type==='skip'?'Jackpot: ein Level-Überspringer!':'Ein neuer Spezialball ist freigeschaltet.';}
+  function spinDailyWheel(){if(safeGet(WHEEL_DATE_KEY,'')===localDayKey()){updateWheelButton();return;}const i=Math.floor(Math.random()*WHEEL_PRIZES.length),p=WHEEL_PRIZES[i],message=grantWheelPrize(p);safeSet(WHEEL_DATE_KEY,localDayKey());wheelSpinButton.disabled=true;wheelSpinButton.textContent='MORGEN WIEDER DREHEN';wheelResult.textContent='Das Rad dreht …';
+    const slice=360/WHEEL_PRIZES.length,target=(360-((i+.5)*slice)+360)%360;wheelCanvas.style.transition='none';wheelCanvas.style.transform='rotate(0deg)';requestAnimationFrame(()=>{wheelCanvas.style.transition='transform 5s cubic-bezier(.12,.78,.12,1)';wheelCanvas.style.transform='rotate('+(6*360+target)+'deg)';});setTimeout(()=>{wheelResult.textContent=message;safeSet(WHEEL_RESULT_KEY,message);},5100);}
+  wheelSpinButton.addEventListener('click',spinDailyWheel);
   function safeGet(key, fallback) {
     try { const value = localStorage.getItem(key); return value === null ? fallback : value; }
     catch (_) { return fallback; }
@@ -599,7 +670,7 @@
     const rawKey = crypto.getRandomValues(new Uint8Array(32));
     const iv = crypto.getRandomValues(new Uint8Array(12));
     const key = await crypto.subtle.importKey('raw',rawKey,{name:'AES-GCM'},false,['encrypt']);
-    const payload = {version:2,progress:loadProgress()||{level:1,score:0,playerHp:50},highscore,shopPoints,playerName,unlockedSkins,selectedSkin};
+    const payload = {version:3,progress:loadProgress()||{level:1,score:0,playerHp:50},highscore,shopPoints,playerName,unlockedSkins,selectedSkin,skipTokens,unlockedBalls,selectedBall,wheelDate:safeGet(WHEEL_DATE_KEY,'')};
     const encrypted = await crypto.subtle.encrypt({name:'AES-GCM',iv},key,new TextEncoder().encode(JSON.stringify(payload)));
     return 'UNTIS2.'+bytesToCode(rawKey)+'.'+bytesToCode(iv)+'.'+bytesToCode(new Uint8Array(encrypted));
   }
@@ -611,19 +682,23 @@
     const key=await crypto.subtle.importKey('raw',rawKey,{name:'AES-GCM'},false,['decrypt']);
     const plain=await crypto.subtle.decrypt({name:'AES-GCM',iv},key,encrypted);
     const data=JSON.parse(new TextDecoder().decode(plain));
-    if (!data || data.version!==2 || !data.progress || !Number.isFinite(data.progress.level) ||
+    if (!data || !([2,3].includes(data.version)) || !data.progress || !Number.isFinite(data.progress.level) ||
         data.progress.level<1 || data.progress.level>MAX_LEVEL) throw new Error('Der Code enthält keinen gültigen Spielstand.');
     if (loadProgress() && !confirm('Dein vorhandener Spielstand wird ersetzt. Möchtest du fortfahren?')) return false;
     safeSet(PROGRESS_KEY,JSON.stringify(data.progress));
     highscore=Math.max(0,Number(data.highscore)||0); safeSet(HIGH_KEY,highscore);
     shopPoints=Math.max(0,Number(data.shopPoints)||0); safeSet(SHOP_POINTS_KEY,shopPoints);
     playerName=String(data.playerName||'').slice(0,18); playerNameInput.value=playerName; safeSet(NAME_KEY,playerName);
+    skipTokens=Math.max(0,Number(data.skipTokens)||0);safeSet(SKIP_TOKENS_KEY,skipTokens);
+    if(Array.isArray(data.unlockedBalls))unlockedBalls=[...new Set(['classic',...data.unlockedBalls.filter(id=>BALL_STYLES.some(b=>b.id===id))])];else unlockedBalls=['classic'];
+    safeSet(BALLS_KEY,JSON.stringify(unlockedBalls));selectedBall=unlockedBalls.includes(data.selectedBall)?data.selectedBall:'classic';safeSet(SELECTED_BALL_KEY,selectedBall);
+    safeSet(WHEEL_DATE_KEY,String(data.wheelDate||''));
     const valid=Array.isArray(data.unlockedSkins)?data.unlockedSkins.filter(id=>SKINS.some(s=>s.id===id)):[];
     unlockedSkins=[...new Set(['green',...valid])]; safeSet(SKINS_KEY,JSON.stringify(unlockedSkins));
     selectedSkin=unlockedSkins.includes(data.selectedSkin)?data.selectedSkin:'green';
     safeSet('untis-blockbreaker-selected-skin-v1',selectedSkin);
     highscoreMenu.textContent=highscore.toLocaleString('de-DE');
-    renderSkins(); renderShop(); renderLeaderboard(); updateResumeButton();
+    renderSkins();renderShop();renderLeaderboard();updateResumeButton();updateWheelButton();
     return true;
   }
   $('transfer-create').addEventListener('click',async()=>{try{
@@ -983,7 +1058,8 @@
   }
 
   function applyPowerup(type) {
-    if (type === 'ballBig') {
+    if(type==='bread'){playerHp=Math.min(70,playerHp+10);saveProgress();showToast('🍞 Brot gefunden: +10 Leben · ❤️ '+playerHp,1800);}
+    else if (type === 'ballBig') {
       balls.forEach(b => { b.r = b.baseR * 1.65; b.sizeUntil = Date.now() + 12000; });
       showToast('🔵 Großer Ball – 12 Sekunden!', 1800);
     } else if (type === 'ballSmall') {
@@ -1014,10 +1090,10 @@
     }
   }
 
-  const powerTypes = ['ballBig','ballSmall','fire','slow','fast','extra','wide','narrow'];
+  const powerTypes = ['ballBig','ballSmall','fire','slow','fast','extra','wide','narrow','bread'];
   const powerSymbols = {
     ballBig: 'B+', ballSmall: 'B−', fire: '🔥', slow: 'S', fast: '⚡',
-    extra: '+', wide: 'W+', narrow: 'W−'
+    extra: '+', wide: 'W+', narrow: 'W−', bread:'🍞'
   };
   function maybeDropPowerup(brick) {
     if (Math.random() < 0.24) {
@@ -1368,6 +1444,7 @@
 
   function drawBall(ball, now) {
     const isFire = ball.fireUntil > now;
+    const ballStyle=BALL_STYLES.find(item=>item.id===selectedBall)||BALL_STYLES[0];
     if (isFire) {
       const glow = ctx.createRadialGradient(ball.x, ball.y, 1, ball.x, ball.y, ball.r * 2.6);
       glow.addColorStop(0, 'rgba(255,240,130,.95)');
@@ -1377,10 +1454,14 @@
       ctx.beginPath(); ctx.arc(ball.x, ball.y, ball.r * 2.6, 0, Math.PI*2); ctx.fill();
     }
     const grad = ctx.createRadialGradient(ball.x - ball.r*.3, ball.y - ball.r*.35, 1, ball.x, ball.y, ball.r);
-    grad.addColorStop(0, isFire ? '#fff6b0' : '#ffffff');
-    grad.addColorStop(1, isFire ? '#ff4b16' : '#e53935');
-    ctx.fillStyle = grad;
-    ctx.beginPath(); ctx.arc(ball.x, ball.y, ball.r, 0, Math.PI*2); ctx.fill();
+    grad.addColorStop(0,isFire?'#fff6b0':ballStyle.top);
+    grad.addColorStop(1,isFire?'#ff4b16':ballStyle.bottom);
+    ctx.fillStyle=grad;
+    if(ballStyle.shape==='diamond'){ctx.beginPath();ctx.moveTo(ball.x,ball.y-ball.r);ctx.lineTo(ball.x+ball.r,ball.y);ctx.lineTo(ball.x,ball.y+ball.r);ctx.lineTo(ball.x-ball.r,ball.y);ctx.closePath();ctx.fill();}
+    else if(ballStyle.shape==='hex'){ctx.beginPath();for(let i=0;i<6;i++){const a=i*Math.PI/3,px=ball.x+Math.cos(a)*ball.r,py=ball.y+Math.sin(a)*ball.r;i?ctx.lineTo(px,py):ctx.moveTo(px,py);}ctx.closePath();ctx.fill();}
+    else if(ballStyle.shape==='star'){ctx.beginPath();for(let i=0;i<10;i++){const a=-Math.PI/2+i*Math.PI/5,r=ball.r*(i%2?.48:1),px=ball.x+Math.cos(a)*r,py=ball.y+Math.sin(a)*r;i?ctx.lineTo(px,py):ctx.moveTo(px,py);}ctx.closePath();ctx.fill();}
+    else{ctx.beginPath();ctx.arc(ball.x,ball.y,ball.r,0,Math.PI*2);ctx.fill();}
+    ctx.strokeStyle=ballStyle.glow;ctx.lineWidth=Math.max(1,ball.r*.16);ctx.beginPath();ctx.arc(ball.x,ball.y,ball.r*.72,0,Math.PI*2);ctx.stroke();
   }
 
   function ballHitsBrick(ball, brick) {
