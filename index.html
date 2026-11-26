@@ -549,7 +549,7 @@
   let lastRocketAt = 0;
   let unlockedSkins = loadSkins();
   let selectedSkin = safeGet('untis-blockbreaker-selected-skin-v1', 'green');
-  let audioSettings=loadAudioSettings(),audioContext=null,musicTimer=null,musicStep=0,comboAt=0,comboCount=0,lastFireCrackleAt=0;
+  let audioSettings=loadAudioSettings(),audioContext=null,musicTimer=null,musicStep=0,comboAt=0,comboCount=0,lastFireCrackleAt=0,audioSessionConfigured=false,audioUnlockPrimed=false;
   function loadObject(key,fallback){try{return Object.assign({},fallback,JSON.parse(safeGet(key,'{}'))||{});}catch(_){return Object.assign({},fallback);}}
   let fxSettings=loadObject(FX_SETTINGS_KEY,{trail:'spark',burst:'confetti',theme:'space'});
   let fxOwned=loadObject(FX_OWNED_KEY,{trail:['spark'],burst:['confetti'],theme:['space']});
@@ -558,9 +558,30 @@
   let particles=[];
   const reducedMotion=window.matchMedia&&window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
-  function loadAudioSettings(){let saved={};try{saved=JSON.parse(safeGet(AUDIO_SETTINGS_KEY,'{}'))||{};}catch(_){}return{sound:saved.sound!==false,vibration:saved.vibration!==false,music:saved.music===true,pack:['soft','retro','arcade'].includes(saved.pack)?saved.pack:'soft',volume:clamp(Number.isFinite(Number(saved.volume))?Number(saved.volume):.14,0,.4)};}
+  function loadAudioSettings(){let saved={};try{saved=JSON.parse(safeGet(AUDIO_SETTINGS_KEY,'{}'))||{};}catch(_){}return{sound:saved.sound!==false,vibration:saved.vibration!==false,music:saved.music===true,pack:['soft','retro','arcade'].includes(saved.pack)?saved.pack:'soft',volume:clamp(Number.isFinite(Number(saved.volume))?Number(saved.volume):.22,0,.4)};}
   function saveAudioSettings(){safeSet(AUDIO_SETTINGS_KEY,JSON.stringify(audioSettings));}
-  function ensureAudioContext(){const C=window.AudioContext||window.webkitAudioContext;if(!C)return null;if(!audioContext)audioContext=new C();if(audioContext.state==='suspended')audioContext.resume().catch(()=>{});return audioContext;}
+  function prepareAudioSession(force=false){
+    try{
+      const session=navigator.audioSession;
+      if(session&&(force||!audioSessionConfigured)){session.type='playback';audioSessionConfigured=true;}
+    }catch(_){}
+  }
+  function ensureAudioContext(){
+    prepareAudioSession();
+    const C=window.AudioContext||window.webkitAudioContext;if(!C)return null;
+    if(audioContext&&audioContext.state==='closed')audioContext=null;
+    if(!audioContext)audioContext=new C();
+    if(audioContext.state!=='running'){try{const resumed=audioContext.resume();if(resumed&&resumed.catch)resumed.catch(()=>{});}catch(_){}}
+    return audioContext;
+  }
+  function wakeAudioFromGesture(){
+    if(!audioSettings.sound&&!audioSettings.music)return;
+    prepareAudioSession(true);
+    const ac=ensureAudioContext();if(!ac)return;
+    if(!audioUnlockPrimed){
+      try{const buffer=ac.createBuffer(1,1,ac.sampleRate),source=ac.createBufferSource();source.buffer=buffer;source.connect(ac.destination);source.start(0);audioUnlockPrimed=true;}catch(_){}
+    }
+  }
   function playTone(freq,duration,wave='sine',amount=.3,slideTo=null,channel='sound',delay=0){if((channel==='sound'&&!audioSettings.sound)||(channel==='music'&&!audioSettings.music))return;if(channel==='sound'){if(audioSettings.pack==='retro')wave='square';else if(audioSettings.pack==='arcade')wave='triangle';}const ac=ensureAudioContext();if(!ac)return;const start=ac.currentTime+delay,end=start+duration,o=ac.createOscillator(),g=ac.createGain();o.type=wave;o.frequency.setValueAtTime(freq,start);if(slideTo)o.frequency.exponentialRampToValueAtTime(Math.max(30,slideTo),end);g.gain.setValueAtTime(Math.max(.0001,audioSettings.volume*amount),start);g.gain.exponentialRampToValueAtTime(.0001,end);o.connect(g);g.connect(ac.destination);o.start(start);o.stop(end+.015);}
   function playNoise(duration=.05,amount=.08){if(!audioSettings.sound)return;const ac=ensureAudioContext();if(!ac)return;const len=Math.max(1,Math.floor(ac.sampleRate*duration)),buf=ac.createBuffer(1,len,ac.sampleRate),data=buf.getChannelData(0);for(let i=0;i<len;i++)data[i]=(Math.random()*2-1)*(1-i/len);const src=ac.createBufferSource(),g=ac.createGain();src.buffer=buf;g.gain.setValueAtTime(Math.max(.0001,audioSettings.volume*amount),ac.currentTime);g.gain.exponentialRampToValueAtTime(.0001,ac.currentTime+duration);src.connect(g);g.connect(ac.destination);src.start();}
   function vibrate(pattern){if(audioSettings.vibration&&navigator.vibrate){try{navigator.vibrate(pattern);}catch(_){}}}
@@ -571,11 +592,17 @@
   function musicBeat(){if(!audioSettings.music||document.hidden){stopMusic();return;}const fast=!!boss,n=musicNotes[musicStep%musicNotes.length];playTone(n,fast ? .2 : .34,'sine',.085,null,'music');musicStep++;musicTimer=setTimeout(musicBeat,fast?285:510);}
   function updateMusic(){if(!audioSettings.music){stopMusic();return;}ensureAudioContext();if(!musicTimer)musicBeat();}
   function syncAudioSettings(){soundToggle.checked=audioSettings.sound;vibrationToggle.checked=audioSettings.vibration;musicToggle.checked=audioSettings.music;volumeInput.value=String(audioSettings.volume);soundPackSelect.value=audioSettings.pack;}
-  [soundToggle,vibrationToggle,musicToggle].forEach((input,i)=>input.addEventListener('change',()=>{if(i===0)audioSettings.sound=input.checked;else if(i===1)audioSettings.vibration=input.checked;else audioSettings.music=input.checked;saveAudioSettings();if(audioSettings.music)updateMusic();else stopMusic();}));
+  [soundToggle,vibrationToggle,musicToggle].forEach((input,i)=>input.addEventListener('change',()=>{if(i===0)audioSettings.sound=input.checked;else if(i===1)audioSettings.vibration=input.checked;else audioSettings.music=input.checked;saveAudioSettings();if(audioSettings.music)updateMusic();else stopMusic();if(audioSettings.sound||audioSettings.music)wakeAudioFromGesture();}));
   volumeInput.addEventListener('input',()=>{audioSettings.volume=clamp(Number(volumeInput.value)||0,0,.4);saveAudioSettings();});
   soundPackSelect.addEventListener('change',()=>{audioSettings.pack=soundPackSelect.value;saveAudioSettings();});syncAudioSettings();
+  document.addEventListener('pointerdown',wakeAudioFromGesture,{capture:true,passive:true});
+  document.addEventListener('touchstart',wakeAudioFromGesture,{capture:true,passive:true});
+  document.addEventListener('keydown',wakeAudioFromGesture,true);
   document.addEventListener('click',e=>{const b=e.target.closest&&e.target.closest('button');if(b&&!b.disabled)playSound('click');if(audioSettings.music)updateMusic();});
-  document.addEventListener('visibilitychange',()=>{if(document.hidden)stopMusic();else if(audioSettings.music)updateMusic();});
+  document.addEventListener('visibilitychange',()=>{
+    if(document.hidden){stopMusic();audioSessionConfigured=false;audioUnlockPrimed=false;}
+    else{prepareAudioSession(true);if(audioSettings.sound||audioSettings.music)ensureAudioContext();if(audioSettings.music)updateMusic();}
+  });
 
   function loadSkins() {
     try {
