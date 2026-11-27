@@ -473,7 +473,10 @@
   const bgImg = $('bg-img');
   const selBox = $('selection-box');
   const canvas = $('game-canvas');
-  const ctx = canvas.getContext('2d');
+  let ctx = canvas.getContext('2d');
+  let bgLayer = null, brickLayer = null, brickDirty = true;
+  function makeLayer(){const c=document.createElement('canvas');c.width=canvas.width;c.height=canvas.height;return c;}
+  function renderLayer(layer,fn){const prev=ctx;ctx=layer.getContext('2d');try{ctx.clearRect(0,0,layer.width,layer.height);fn();}finally{ctx=prev;}}
   const toast = $('toast');
   const finishPanel = $('finish-panel');
   const finishTitle = $('finish-title');
@@ -1399,6 +1402,8 @@
       }
     }
 
+    bgLayer=makeLayer();renderLayer(bgLayer,drawLevelBackground);
+    brickLayer=makeLayer();brickDirty=true;
     paddle.w = Math.max(48, canvas.width * (portrait ? 0.25 : 0.16));
     paddle.h = Math.max(10, Math.min(17, canvas.height * 0.018));
     if(helpInventory.startWide)paddle.w=Math.min(canvas.width*.55,paddle.w*1.35);
@@ -1494,7 +1499,7 @@
   function drawParticles(){for(let i=particles.length-1;i>=0;i--){const p=particles[i];p.x+=p.dx;p.y+=p.dy;p.dy+=.09;p.dx*=.985;p.life--;if(p.life<=0){particles.splice(i,1);continue;}ctx.save();ctx.globalAlpha=p.life/p.maxLife;ctx.fillStyle=p.color;if(p.shape==='stars'){ctx.beginPath();ctx.moveTo(p.x,p.y-4);ctx.lineTo(p.x+1.4,p.y-1.4);ctx.lineTo(p.x+4,p.y);ctx.lineTo(p.x+1.4,p.y+1.4);ctx.lineTo(p.x,p.y+4);ctx.lineTo(p.x-1.4,p.y+1.4);ctx.lineTo(p.x-4,p.y);ctx.lineTo(p.x-1.4,p.y-1.4);ctx.closePath();ctx.fill();}else{ctx.translate(p.x,p.y);ctx.rotate(p.life*.13);ctx.fillRect(-2,-2,4,4);}ctx.restore();}}
   function destroyBrick(brick, award = true) {
     if (!brick.alive) return;
-    brick.alive = false;
+    brick.alive = false; brickDirty = true;
     burstParticles(brick);
     playBlockSound(brick.originalType);
     vibrate(brick.originalType==='ice'?[8,18,8]:brick.originalType==='double'?[12,22,12]:8);
@@ -1505,7 +1510,7 @@
     if (!brick.alive) return 'none';
     if (brick.type === 'red') { playBlockSound('red'); return 'bounce'; }
     if (brick.type === 'volatile') {
-      brick.type = 'red';
+      brick.type = 'red'; brickDirty = true;
       brick.breakable = false;
       brick.cracked = true;
       playBlockSound('red');
@@ -1520,7 +1525,7 @@
     brick.hp -= damage;
     if (brick.hp > 0) {
       brick.cracked = true;
-      if(brick.originalType==='double'){playBlockSound('double-hit');vibrate([7,14,7]);}
+      if(brick.originalType==='double'){brickDirty=true;playBlockSound('double-hit');vibrate([7,14,7]);}
       return isFire ? 'pass' : 'bounce';
     }
     destroyBrick(brick, true);
@@ -1548,10 +1553,9 @@
       drawRoundedRect(brick.x + inset, brick.y + inset, brick.w - 2*inset, brick.h - 2*inset, 4);
       ctx.fill();
       ctx.strokeStyle = '#ffd0d0'; ctx.lineWidth = 1.5; ctx.stroke();
-      ctx.fillStyle = 'rgba(45,0,0,.65)';
-      ctx.font = 'bold ' + Math.max(9, Math.min(15, brick.h * .45)) + 'px sans-serif';
-      ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-      ctx.fillText('✕', brick.x + brick.w/2, brick.y + brick.h/2);
+      ctx.strokeStyle='rgba(45,0,0,.65)';ctx.lineWidth=2;
+      const rx=brick.x+brick.w/2,ry=brick.y+brick.h/2,rd=Math.min(brick.w,brick.h)*.18;
+      ctx.beginPath();ctx.moveTo(rx-rd,ry-rd);ctx.lineTo(rx+rd,ry+rd);ctx.moveTo(rx+rd,ry-rd);ctx.lineTo(rx-rd,ry+rd);ctx.stroke();
       return;
     }
 
@@ -2046,14 +2050,13 @@
   function loop() {
     if (!isPlaying) return;
     const now = Date.now();
-    drawLevelBackground();
+    ctx.drawImage(bgLayer,0,0);
     drawHud(now);
 
-    let remaining = 0;
-    for (const brick of bricks) {
-      if (brick.alive && brick.breakable) remaining++;
-      drawBrick(brick);
-    }
+    let remaining=0;
+    for(const brick of bricks)if(brick.alive&&brick.breakable)remaining++;
+    if(brickDirty){renderLayer(brickLayer,()=>{for(const brick of bricks)drawBrick(brick);});brickDirty=false;}
+    ctx.drawImage(brickLayer,0,0);
     drawParticles();
     drawBoss(now);
     if (!isPlaying) return;
