@@ -59,6 +59,8 @@
     .settings-options { display:grid; grid-template-columns:repeat(3,1fr); gap:7px; }
     .settings-options label { display:flex; align-items:center; gap:5px; color:#d9d8ef; font-size:12px; }
     .settings-options input { accent-color:#9b8cff; }
+    .settings-options input:disabled { opacity:.45; }
+    #vibration-note { margin-top:7px; }
     .volume-row { display:flex; align-items:center; gap:9px; margin-top:8px; color:#aaa9c2; font-size:11px; }
     #audio-volume { flex:1; accent-color:#9b8cff; }
     #menu-high { color:inherit; font-weight:500; font-size:12px; margin:0; }
@@ -295,6 +297,7 @@
         <label><input id="vibration-toggle" type="checkbox"> Vibration</label>
         <label><input id="music-toggle" type="checkbox"> Musik</label>
       </div>
+      <p id="vibration-note" class="small-note" role="status" hidden>Dieser Browser unterstützt keine Webseiten-Vibration.</p>
       <label class="volume-row" for="audio-volume">Lautstärke <input id="audio-volume" type="range" min="0" max="0.4" step="0.01"></label>
       <label class="volume-row" for="sound-pack">Sound-Paket <select id="sound-pack"><option value="soft">Weich</option><option value="retro">Retro</option><option value="arcade">Arcade</option></select></label>
     </section>
@@ -401,7 +404,7 @@
   const transferPanel = $('transfer-panel');
   const transferCode = $('transfer-code');
   const transferStatus = $('transfer-status');
-  const soundToggle=$('sound-toggle'),vibrationToggle=$('vibration-toggle'),musicToggle=$('music-toggle'),volumeInput=$('audio-volume'),soundPackSelect=$('sound-pack');
+  const soundToggle=$('sound-toggle'),vibrationToggle=$('vibration-toggle'),musicToggle=$('music-toggle'),volumeInput=$('audio-volume'),soundPackSelect=$('sound-pack'),vibrationNote=$('vibration-note');
   const playerNameInput = $('player-name');
   const skinSelect = $('skin-select');
   const skinGalleryToggle = $('skin-gallery-toggle');
@@ -591,7 +594,15 @@
   function stopMusic(){if(musicTimer){clearTimeout(musicTimer);musicTimer=null;}}
   function musicBeat(){if(!audioSettings.music||document.hidden){stopMusic();return;}const fast=!!boss,n=musicNotes[musicStep%musicNotes.length];playTone(n,fast ? .2 : .34,'sine',.085,null,'music');musicStep++;musicTimer=setTimeout(musicBeat,fast?285:510);}
   function updateMusic(){if(!audioSettings.music){stopMusic();return;}ensureAudioContext();if(!musicTimer)musicBeat();}
-  function syncAudioSettings(){soundToggle.checked=audioSettings.sound;vibrationToggle.checked=audioSettings.vibration;musicToggle.checked=audioSettings.music;volumeInput.value=String(audioSettings.volume);soundPackSelect.value=audioSettings.pack;}
+  const vibrationSupported=typeof navigator.vibrate==='function';
+  function syncAudioSettings(){
+    soundToggle.checked=audioSettings.sound;
+    vibrationToggle.disabled=!vibrationSupported;
+    vibrationToggle.checked=vibrationSupported&&audioSettings.vibration;
+    vibrationNote.hidden=vibrationSupported;
+    if(!vibrationSupported&&audioSettings.vibration){audioSettings.vibration=false;saveAudioSettings();}
+    musicToggle.checked=audioSettings.music;volumeInput.value=String(audioSettings.volume);soundPackSelect.value=audioSettings.pack;
+  }
   [soundToggle,vibrationToggle,musicToggle].forEach((input,i)=>input.addEventListener('change',()=>{if(i===0)audioSettings.sound=input.checked;else if(i===1)audioSettings.vibration=input.checked;else audioSettings.music=input.checked;saveAudioSettings();if(audioSettings.music)updateMusic();else stopMusic();if(audioSettings.sound||audioSettings.music)wakeAudioFromGesture();}));
   volumeInput.addEventListener('input',()=>{audioSettings.volume=clamp(Number(volumeInput.value)||0,0,.4);saveAudioSettings();});
   soundPackSelect.addEventListener('change',()=>{audioSettings.pack=soundPackSelect.value;saveAudioSettings();});syncAudioSettings();
