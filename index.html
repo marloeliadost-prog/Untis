@@ -124,6 +124,14 @@
       display: none; position: absolute; z-index: 50; pointer-events: none;
       image-rendering: auto;
     }
+    #duel-controls { display:none; position:absolute; inset:0; z-index:60; pointer-events:none; }
+    #duel-controls button { position:absolute; right:12px; min-height:42px; padding:9px 12px; pointer-events:auto; border-radius:12px; border:1px solid #f4b95b; background:#28223a; color:#fff; font-weight:800; box-shadow:0 5px 18px #0008; }
+    #duel-rocket-1 { top:calc(env(safe-area-inset-top) + 10px); }
+    #duel-rocket-2 { bottom:calc(env(safe-area-inset-bottom) + 10px); }
+    #season-banner { margin:10px 0 4px; padding:9px 12px; border:1px solid #6356a5; border-radius:12px; background:linear-gradient(100deg,#312956,#184347); color:#eafaff; font-size:13px; text-align:center; }
+    #duel-panel textarea { min-height:110px; }
+    #duel-panel input { margin:7px 0 10px; }
+    #duel-status { min-height:24px; }
     #toast {
       display: none; position: fixed; top: 13px; left: 50%; transform: translateX(-50%);
       background: rgba(20,20,30,.94); color: #fff; padding: 10px 14px; border-radius: 10px;
@@ -141,11 +149,12 @@
     #finish-panel p { margin: 8px 0; color: #eee; font-size: 14px; }
     .panel-actions { display: flex; flex-wrap: wrap; justify-content: center; gap: 9px; margin-top: 16px; }
     .small-note { color: #a9a9c2 !important; font-size: 11px !important; line-height: 1.4; }
-    #shop-panel, #transfer-panel { display:none; position:fixed; z-index:70; }
-    #shop-panel,#transfer-panel,#wheel-panel { left:50%; top:50dvh; transform:translate(-50%,-50%); }
+    #shop-panel, #transfer-panel, #duel-panel { display:none; position:fixed; z-index:70; }
+    #shop-panel,#transfer-panel,#wheel-panel,#duel-panel { left:50%; top:50dvh; transform:translate(-50%,-50%); }
     #shop-panel { padding-top:18px; }
     #shop-balance-panel { position:sticky; top:-2px; z-index:4; padding:9px 10px; margin:8px 0; border:1px solid #5c5584; border-radius:10px; background:#201f35; color:#ffe08a; font-size:12px; box-shadow:0 5px 14px rgba(0,0,0,.22); }
     .shop-item { min-height:128px; }
+    .shop-season-heading { grid-column:1/-1; padding:8px 10px; border:1px solid #655aa0; border-radius:10px; background:#24213b; color:#dffcff; font-weight:800; font-size:13px; }
     .shop-item strong { font-size:13px; line-height:1.3; }
     .shop-item .buy-btn { background:#245b4d; border-color:#4c9b81; color:#f2fff8; }
     .shop-item button { min-height:36px; }
@@ -335,6 +344,7 @@
     <div class="menu-main-actions">
       <button class="menu-btn" id="menu-play" type="button">Spielen</button>
       <button class="secondary-btn" id="resume-play" type="button" hidden>Fortsetzen bei Level 1</button>
+      <button class="secondary-btn" id="duel-open" type="button">2 Spieler</button>
     </div>
     <div class="menu-tool-grid">
       <button class="secondary-btn" id="shop-open" type="button">Shop</button>
@@ -360,6 +370,7 @@
     <button class="secondary-btn" id="skin-gallery-toggle" type="button">Schläger ansehen</button>
     <div id="skin-gallery" class="skin-gallery" hidden></div>
     <div id="round-info">Zerstöre die Blöcke und meistere 2.000 Level. Boss alle 15 Level.</div>
+    <div id="season-banner" aria-live="polite"></div>
     <div class="leaderboard">
       <h2>Rangliste auf diesem Gerät</h2>
       <ol id="leader-list"><li><span>Noch keine Einträge</span><span>—</span></li></ol>
@@ -383,6 +394,20 @@
     <section class="shop-section" data-shop-section="effects" hidden><h3 class="shop-section-title">Effekte und Sets</h3><div id="shop-effects"></div><div id="shop-extras"></div></section>
     <section class="shop-section" data-shop-section="helps" hidden><h3 class="shop-section-title">Spielhilfen</h3><div id="shop-helps"></div></section>
     <div class="panel-actions"><button class="secondary-btn" id="shop-close" type="button">ZURÜCK</button></div>
+  </div>
+  <div id="duel-panel" class="panel">
+    <h2>2 Spieler</h2>
+    <p class="small-note">Offline auf einem Gerät: Spieler 1 oben, Spieler 2 unten. Ziehe in deiner Hälfte, um den Schläger zu bewegen. Jeder startet mit 20 Raketen. Raketen-Treffer kosten 10 Leben.</p>
+    <label class="field-label" for="duel-save-code">Spielstand-Code von Spieler 2</label>
+    <textarea id="duel-save-code" spellcheck="false" placeholder="Spieler 2 fügt hier den eigenen Spielstand-Code ein"></textarea>
+    <button class="menu-btn" id="duel-local-start" type="button">Offline-Spiel starten</button>
+    <hr>
+    <p class="small-note">Online: Code erstellen und an die andere Person geben oder den Code eingeben. Beide brauchen Internet und den kostenlosen Vermittlungsdienst. Wenn der ausfällt, geht das Online-Spiel nicht. Es wird kein Spielstand-Code übertragen.</p>
+    <label class="field-label" for="duel-room-code">Online-Raumcode</label>
+    <input id="duel-room-code" maxlength="80" autocomplete="off" placeholder="Raumcode eingeben oder erstellen">
+    <div class="panel-actions"><button class="secondary-btn" id="duel-room-create" type="button">Raum erstellen</button><button class="secondary-btn" id="duel-room-join" type="button">Beitreten</button><button class="secondary-btn" id="duel-room-copy" type="button" hidden>Code kopieren</button></div>
+    <p id="duel-status" class="small-note" role="status"></p>
+    <div class="panel-actions"><button class="secondary-btn" id="duel-close" type="button">Zurück</button></div>
   </div>
   <div id="transfer-panel" class="panel">
     <h2>Spielstand übertragen</h2>
@@ -439,8 +464,10 @@
     <img id="bg-img" src="" alt="">
     <div id="selection-box"></div>
     <canvas id="game-canvas"></canvas>
+    <div id="duel-controls"><button id="duel-rocket-1" type="button">Spieler 1 · 20 Raketen</button><button id="duel-rocket-2" type="button">Spieler 2 · 20 Raketen</button></div>
   </div>
 
+<script src="https://unpkg.com/peerjs@1.5.5/dist/peerjs.min.js" crossorigin="anonymous"></script>
 <script>
 (() => {
   'use strict';
@@ -459,11 +486,14 @@
   const transferPanel = $('transfer-panel');
   const transferCode = $('transfer-code');
   const transferStatus = $('transfer-status');
+  const duelPanel=$('duel-panel'),duelStatus=$('duel-status'),duelSaveCode=$('duel-save-code'),duelRoomCode=$('duel-room-code');
+  const duelControls=$('duel-controls'),duelRocketButtons=[$('duel-rocket-1'),$('duel-rocket-2')];
   const soundToggle=$('sound-toggle'),vibrationToggle=$('vibration-toggle'),musicToggle=$('music-toggle'),volumeInput=$('audio-volume'),soundPackSelect=$('sound-pack'),vibrationNote=$('vibration-note');
   const playerNameInput = $('player-name');
   const skinSelect = $('skin-select');
   const skinGalleryToggle = $('skin-gallery-toggle');
   const skinGallery = $('skin-gallery');
+  const seasonBanner=$('season-banner');
   const highscoreMenu = $('highscore-menu');
   const leaderList = $('leader-list');
   const myRank = $('my-rank');
@@ -499,6 +529,7 @@
   const BALLS_KEY='untis-blockbreaker-balls-v1', SELECTED_BALL_KEY='untis-blockbreaker-selected-ball-v1';
   const SKIP_TOKENS_KEY='untis-blockbreaker-level-skips-v1', WHEEL_DATE_KEY='untis-blockbreaker-wheel-date-v1', WHEEL_RESULT_KEY='untis-blockbreaker-wheel-result-v1';
   const AUDIO_SETTINGS_KEY='untis-blockbreaker-audio-settings-v1';
+  const DUEL_SPIN_KEY='untis-blockbreaker-duel-wheel-spins-v1';
   const FX_OWNED_KEY='untis-blockbreaker-effects-owned-v1',FX_SETTINGS_KEY='untis-blockbreaker-effects-selected-v1',HELP_KEY='untis-blockbreaker-help-items-v1';
   const BALL_STYLES=[
     {id:'classic',name:'Klassisch',top:'#fff',bottom:'#e53935',glow:'#ff453a',price:0,shape:'circle'},
@@ -565,6 +596,65 @@
       flames:[theme[4],theme[5]], pattern:'flame', flameStyle:i%5,
       ...(unlockLevel ? { unlockLevel } : { price:35000 + (i - 15) * 24000 }) });
   });
+
+  const SEASON_BASES=[
+    {name:'Winterzauber',hue:205,top:'#eaffff',bottom:'#35a8de',edge:'#c9f6ff'},
+    {name:'Weihnachtslichter',hue:8,top:'#fff1a1',bottom:'#c51c3b',edge:'#27cc72'},
+    {name:'Weltuntergang',hue:15,top:'#ffd09c',bottom:'#9b1d11',edge:'#ff762b'},
+    {name:'Weltall',hue:258,top:'#f2d7ff',bottom:'#5425b8',edge:'#6df4ff'},
+    {name:'Frühlingsblüte',hue:116,top:'#efffa7',bottom:'#54b62e',edge:'#ff9fcf'},
+    {name:'Ozean',hue:191,top:'#c7ffff',bottom:'#0787ad',edge:'#b4eaff'},
+    {name:'Dschungel',hue:141,top:'#d5ffab',bottom:'#14784b',edge:'#edff77'},
+    {name:'Neonstadt',hue:299,top:'#ffb8f4',bottom:'#7629c6',edge:'#36fff0'},
+    {name:'Superhelden',hue:226,top:'#fff27a',bottom:'#2457d8',edge:'#ff526c'},
+    {name:'Drachenhimmel',hue:28,top:'#fff0a1',bottom:'#db421e',edge:'#6d22a5'},
+    {name:'Unterwasserwelt',hue:178,top:'#d4fff2',bottom:'#138f91',edge:'#77aaff'},
+    {name:'Sommersonne',hue:45,top:'#fff5a4',bottom:'#ef8421',edge:'#fb4ba2'}
+  ];
+  const SEASON_PREFIXES=['Aurora','Sternenflug','Kristallpfad','Drachenwind','Lichtwellen','Funkelwelt','Himmelsreise','Neontraum','Mondschein','Sonnensturm','Traumreich','Wirbelwind','Zauberwald','Kometenlauf','Wolkenreich','Glanzwelt'];
+  function seasonHsl(h,s,l){return 'hsl('+((h%360)+360)%360+','+s+'%,'+l+'%)';}
+  function getSeasonNumber(){
+    const now=new Date(),today=Date.UTC(now.getFullYear(),now.getMonth(),now.getDate());
+    const weekday=(new Date(today).getUTCDay()+6)%7,monday=today-weekday*86400000;
+    const epoch=Date.UTC(2026,10,23),week=Math.floor((monday-epoch)/604800000);
+    return ((week%200)+200)%200+1;
+  }
+  const SEASON_CATALOG=Array.from({length:200},(_,i)=>{
+    const number=i+1,base=SEASON_BASES[i%SEASON_BASES.length],cycle=Math.floor(i/SEASON_BASES.length);
+    const hue=(base.hue+cycle*23+i*7)%360;
+    const curated=number<=12;
+    const title=curated?base.name:SEASON_PREFIXES[(number-13)%SEASON_PREFIXES.length]+' '+base.name+' · '+String(number).padStart(3,'0');
+    const colors=curated?{top:base.top,bottom:base.bottom,edge:base.edge}:{top:seasonHsl(hue,92,79),bottom:seasonHsl(hue+38,84,48),edge:seasonHsl(hue+150,95,78)};
+    const paddles=Array.from({length:4},(_,j)=>({
+      id:'season-'+number+'-paddle-'+(j+1),name:title+' · Schläger '+(j+1),
+      top:j===0?colors.top:seasonHsl(hue+j*25,92,75-j*3),
+      bottom:j===0?colors.bottom:seasonHsl(hue+35+j*31,84,43+j*4),
+      edge:j===0?colors.edge:seasonHsl(hue+150+j*23,95,72),
+      pattern:j===1?'neon':j===2?'galaxy':j===3?'flame':undefined,
+      flames:[seasonHsl(hue+35,100,86),seasonHsl(hue+10,100,52)],flameStyle:(number+j)%5,
+      price:85000+number*1250,seasonNumber:number
+    }));
+    const balls=Array.from({length:2},(_,j)=>({
+      id:'season-'+number+'-ball-'+(j+1),name:title+' · Ball '+(j+1),
+      top:j===0?'#ffffff':seasonHsl(hue+70,100,88),bottom:j===0?colors.bottom:seasonHsl(hue+215,90,55),
+      glow:j===0?colors.edge:seasonHsl(hue+165,100,72),price:110000+number*1600,
+      shape:j===0?'diamond':'star',seasonNumber:number
+    }));
+    return {number,title,hue,top:colors.top,bottom:colors.bottom,edge:colors.edge,
+      background:[seasonHsl(hue,48,16),seasonHsl(hue+42,54,10),seasonHsl(hue+165,92,61)],
+      paddles,balls,effectId:'season-'+number,effectPrice:95000+number*1400};
+  });
+  const currentSeason=SEASON_CATALOG[getSeasonNumber()-1];
+  function readOwnedIds(key){try{const ids=JSON.parse(safeGet(key,'[]'));return Array.isArray(ids)?ids:[];}catch(_){return [];}}
+  const savedSeasonSkins=readOwnedIds('untis-blockbreaker-skins-v1');
+  const savedSeasonBalls=readOwnedIds('untis-blockbreaker-balls-v1');
+  const seasonalSkinIds=new Set(currentSeason.paddles.map(x=>x.id));
+  const seasonalBallIds=new Set(currentSeason.balls.map(x=>x.id));
+  savedSeasonSkins.forEach(id=>seasonalSkinIds.add(id));
+  savedSeasonBalls.forEach(id=>seasonalBallIds.add(id));
+  seasonalSkinIds.forEach(id=>{for(const season of SEASON_CATALOG){const skin=season.paddles.find(x=>x.id===id);if(skin&&!SKINS.some(x=>x.id===id)){SKINS.push(skin);break;}}});
+  seasonalBallIds.forEach(id=>{for(const season of SEASON_CATALOG){const ball=season.balls.find(x=>x.id===id);if(ball&&!BALL_STYLES.some(x=>x.id===id)){BALL_STYLES.push(ball);break;}}});
+
   const HIGH_KEY = 'untis-blockbreaker-highscore-v3';
   const LEADER_KEY = 'untis-blockbreaker-leaderboard-v3';
   const NAME_KEY = 'untis-blockbreaker-playername-v3';
@@ -588,6 +678,9 @@
   let imageOnly = false;
   let imageOnlyStartedAt = 0;
   let isPlaying = false;
+  let activeSeasonNumber=currentSeason.number;
+  setInterval(()=>{const n=getSeasonNumber();if(n!==activeSeasonNumber&&!isPlaying&&menu.getClientRects().length)location.reload();},30000);
+  let duelMode=false,duelState=null,duelRole='local',duelLocalIndex=0,duelPeer=null,duelConn=null,duelResultShown=false,duelLastSync=0,duelLastInputSent=0;
   let roundFinished = false;
   let animId = null;
   let resetTimer = null;
@@ -796,22 +889,25 @@
   }
   function renderBallShop(){
     ballShopList.replaceChildren();
+    const seasonHeading=document.createElement('div');seasonHeading.className='shop-season-heading';seasonHeading.textContent='Diese Woche: '+currentSeason.title+' · 2 Spezialbälle';ballShopList.appendChild(seasonHeading);
     BALL_STYLES.forEach(ball=>{
       const owned=unlockedBalls.includes(ball.id),item=document.createElement('div');item.className='shop-item';
       const preview=document.createElement('div');preview.className='skin-preview';preview.style.background='radial-gradient(circle at 30% 25%,'+ball.top+','+ball.bottom+')';preview.style.borderColor=ball.glow;preview.style.boxShadow='0 0 12px '+ball.glow;
       const name=document.createElement('strong');name.textContent=ball.name;item.append(preview,name);
+      if(ball.seasonNumber){const tag=document.createElement('span');tag.className='daily-tag';tag.textContent='Nur diese Woche · Saison '+ball.seasonNumber;item.appendChild(tag);}
       const demo=document.createElement('button');demo.className='secondary-btn';demo.type='button';demo.textContent='Vorschau';demo.addEventListener('click',()=>{preview.classList.remove('preview-demo');void preview.offsetWidth;preview.classList.add('preview-demo');setTimeout(()=>preview.classList.remove('preview-demo'),2100);});item.appendChild(demo);
       const button=document.createElement('button');button.className='secondary-btn'+(owned?'':' buy-btn');button.type='button';
-      button.textContent=owned?(selectedBall===ball.id?'Ausgewählt':'Ausrüsten'):'Kaufen · '+formatNumber(ball.price)+' Punkte';
-      button.disabled=!owned&&shopPoints<ball.price;
+      const ballPrice=ball.seasonNumber?scaledShopPrice(ball.price):ball.price;
+      button.textContent=owned?(selectedBall===ball.id?'Ausgewählt':'Ausrüsten'):'Kaufen · '+formatNumber(ballPrice)+' Punkte';
+      button.disabled=!owned&&shopPoints<ballPrice;
       button.addEventListener('click',()=>{
         if(!unlockedBalls.includes(ball.id)){
-          if(!canPurchase(ball.price,ball.name))return;
-          shopPoints-=ball.price;safeSet(SHOP_POINTS_KEY,shopPoints);unlockedBalls.push(ball.id);safeSet(BALLS_KEY,JSON.stringify(unlockedBalls));playSound('purchase');
+          if(!canPurchase(ballPrice,ball.name))return;
+          shopPoints-=ballPrice;safeSet(SHOP_POINTS_KEY,shopPoints);unlockedBalls.push(ball.id);safeSet(BALLS_KEY,JSON.stringify(unlockedBalls));playSound('purchase');
         }
         selectedBall=ball.id;safeSet(SELECTED_BALL_KEY,selectedBall);renderShop();updateShopBalance();
       });
-      item.appendChild(button);if(!owned)addPriceProgress(item,ball.price);ballShopList.appendChild(item);
+      item.appendChild(button);if(!owned)addPriceProgress(item,ballPrice);ballShopList.appendChild(item);
     });
   }
   function renderEffectsShop(){
@@ -819,7 +915,7 @@
     const effectOptions={
       trail:[['spark','Funken'],['ice','Eis'],['rainbow','Regenbogen']],
       burst:[['confetti','Konfetti'],['sparks','Funken'],['stars','Sternchen']],
-      theme:[['space','Weltraum'],['forest','Wald'],['neon','Neonstadt']]
+      theme:[['space','Weltraum'],['forest','Wald'],['neon','Neonstadt'],...SEASON_CATALOG.filter(season=>season.number===currentSeason.number||(fxOwned.theme||[]).includes(season.effectId)).map(season=>[season.effectId,'Saison: '+season.title])]
     };
     const controls=document.createElement('div');controls.className='effect-controls';
     Object.entries(effectOptions).forEach(([key,options])=>{
@@ -842,6 +938,8 @@
       const price=scaledShopPrice(o.base);
       addShopPurchase(shopEffects,o.name,price,null,()=>{fxOwned[o.key]=[...(fxOwned[o.key]||[]),o.id];fxSettings[o.key]=o.id;safeSet(FX_OWNED_KEY,JSON.stringify(fxOwned));safeSet(FX_SETTINGS_KEY,JSON.stringify(fxSettings));});
     });
+    const seasonalThemeOwned=(fxOwned.theme||[]).includes(currentSeason.effectId);
+    if(!seasonalThemeOwned)addShopPurchase(shopEffects,'Saison-Effekt · '+currentSeason.title,scaledShopPrice(currentSeason.effectPrice),null,()=>{fxOwned.theme=[...(fxOwned.theme||[]),currentSeason.effectId];fxSettings.theme=currentSeason.effectId;safeSet(FX_OWNED_KEY,JSON.stringify(fxOwned));safeSet(FX_SETTINGS_KEY,JSON.stringify(fxSettings));},false,'Nur diese Woche erhältlich');
     const lava=SKINS.find(x=>x.id==='lava'),bundlePrice=scaledShopPrice(190000),bundleMissing=!unlockedSkins.includes('lava')||!unlockedBalls.includes('ice-orb')||!(fxOwned.trail||[]).includes('ice');
     if(bundleMissing)addShopPurchase(shopEffects,'Set Lava, Eiskristall und Eis-Schweif',bundlePrice,null,()=>{
       if(lava&&!unlockedSkins.includes('lava'))unlockedSkins.push('lava');
@@ -877,17 +975,18 @@
   }
   function renderShop(){
     updateShopBalance();shopList.replaceChildren();
+    const seasonalHeading=document.createElement('div');seasonalHeading.className='shop-season-heading';seasonalHeading.textContent='Diese Woche: '+currentSeason.title+' · 4 Schläger-Designs';shopList.appendChild(seasonalHeading);
     const offer=dailySkinOffer();
     SKINS.filter(skin=>!unlockedSkins.includes(skin.id)).forEach(skin=>{
-      const base=skin.price||Math.max(30000,(skin.unlockLevel||1)*180),isOffer=skin===offer;
+      const base=skin.seasonNumber?scaledShopPrice(skin.price):(skin.price||Math.max(30000,(skin.unlockLevel||1)*180)),isOffer=skin===offer;
       const price=isOffer?Math.floor(base*.8):base,item=document.createElement('div');item.className='shop-item';
       const preview=document.createElement('div');preview.className='skin-preview'+(skin.pattern?' style-'+skin.pattern:'');
       preview.style.setProperty('--skin-top',skin.top);preview.style.setProperty('--skin-bottom',skin.bottom);preview.style.setProperty('--skin-edge',skin.edge);
       addShopPurchase(shopList,skin.name,price,preview,()=>{
         unlockedSkins=[...new Set([...unlockedSkins,skin.id])];safeSet(SKINS_KEY,JSON.stringify(unlockedSkins));renderSkins();
-      },false,isOffer?'Tagesangebot · 20 % günstiger':'');
+      },false,skin.seasonNumber?'Nur diese Woche · Saison '+skin.seasonNumber:(isOffer?'Tagesangebot · 20 % günstiger':''));
     });
-    if(!shopList.children.length)shopList.textContent='Alles freigeschaltet. Neue Designs kommen mit deinem Fortschritt.';
+    if(shopList.children.length===1)shopList.textContent='Alle aktuellen Designs sind freigeschaltet.';
     renderBallShop();renderEffectsShop();renderHelpShop();
   }  function renderSkins() {
     skinSelect.replaceChildren();
@@ -929,6 +1028,7 @@
     skinGalleryToggle.textContent = skinGallery.hidden ? 'Schläger ansehen' : 'Schläger ausblenden';
   });
   renderSkins();
+  seasonBanner.textContent='Wochensaison: '+currentSeason.title+' · 4 Schläger, 2 Bälle und ein Effekt nur diese Woche im Shop.';
   renderShop();
   function setShopTab(tab){document.querySelectorAll('[data-shop-section]').forEach(section=>section.hidden=section.dataset.shopSection!==tab);document.querySelectorAll('.shop-tab-button').forEach(button=>button.classList.toggle('active',button.dataset.shopTab===tab));}
   document.querySelectorAll('.shop-tab-button').forEach(button=>button.addEventListener('click',()=>setShopTab(button.dataset.shopTab)));
@@ -937,6 +1037,8 @@
   $('transfer-open').addEventListener('click', () => { menu.style.display='none'; transferPanel.style.display='block'; transferStatus.textContent=''; });
   $('wheel-open').addEventListener('click',()=>{menu.style.display='none';wheelPanel.style.display='block';wheelResult.textContent='';drawDailyWheel();updateWheelButton();});
   $('wheel-close').addEventListener('click',()=>{wheelPanel.style.display='none';menu.style.display='block';});
+  $('duel-open').addEventListener('click',()=>{menu.style.display='none';duelPanel.style.display='block';duelStatus.textContent='';duelRoomCode.value='';$('duel-room-copy').hidden=true;});
+  $('duel-close').addEventListener('click',()=>{closeDuelPanel();});
   $('transfer-close').addEventListener('click', () => { transferPanel.style.display='none'; menu.style.display='block'; });
 
   function buyBread(){if(shopPoints<24000){showToast('Dafür brauchst du noch mehr Punkte.');return;}const p=loadProgress()||{level:1,score:0,playerHp:50};if(p.playerHp>=70){showToast('Deine Leben sind schon voll.');return;}shopPoints-=24000;p.playerHp=Math.min(70,p.playerHp+10);safeSet(SHOP_POINTS_KEY,shopPoints);safeSet(PROGRESS_KEY,JSON.stringify(p));playerHp=p.playerHp;renderShop();updateResumeButton();playSound('purchase');showToast('Brot gekauft: +10 Leben.');}
@@ -945,17 +1047,19 @@
   function drawDailyWheel(){const cx=180,cy=180,r=169,slice=2*Math.PI/WHEEL_PRIZES.length;wheelCtx.clearRect(0,0,360,360);wheelCtx.save();wheelCtx.translate(cx,cy);
     WHEEL_PRIZES.forEach((p,i)=>{const start=-Math.PI/2+i*slice;wheelCtx.beginPath();wheelCtx.moveTo(0,0);wheelCtx.arc(0,0,r,start,start+slice);wheelCtx.closePath();wheelCtx.fillStyle=p.color;wheelCtx.fill();wheelCtx.strokeStyle='#fff';wheelCtx.lineWidth=2;wheelCtx.stroke();wheelCtx.save();wheelCtx.rotate(start+slice/2);wheelCtx.fillStyle='#fff';wheelCtx.font='bold 12px sans-serif';wheelCtx.textAlign='right';wheelCtx.textBaseline='middle';wheelCtx.fillText(p.label,r*.88,0,85);wheelCtx.restore();});
     wheelCtx.beginPath();wheelCtx.arc(0,0,23,0,2*Math.PI);wheelCtx.fillStyle='#ffd66b';wheelCtx.fill();wheelCtx.strokeStyle='#fff';wheelCtx.lineWidth=3;wheelCtx.stroke();wheelCtx.restore();}
-  function updateWheelButton(){const used=safeGet(WHEEL_DATE_KEY,'')===localDayKey();wheelSpinButton.disabled=used;wheelSpinButton.textContent=used?'Morgen wieder drehen':'Täglich drehen';if(used)wheelResult.textContent=safeGet(WHEEL_RESULT_KEY,'Du hast heute schon gedreht.');}
+  function updateWheelButton(){const used=safeGet(WHEEL_DATE_KEY,'')===localDayKey(),tokens=Math.max(0,Number(safeGet(DUEL_SPIN_KEY,'0'))||0);wheelSpinButton.disabled=used&&tokens===0;wheelSpinButton.textContent=tokens?'Extra-Drehung ('+tokens+')':used?'Morgen wieder drehen':'Täglich drehen';if(used&&tokens===0)wheelResult.textContent=safeGet(WHEEL_RESULT_KEY,'Du hast heute schon gedreht.');}
   function grantBread(){const p=loadProgress()||{level:1,score:0,playerHp:50};p.playerHp=Math.min(70,p.playerHp+10);safeSet(PROGRESS_KEY,JSON.stringify(p));playerHp=p.playerHp;updateResumeButton();}
   function grantWheelPrize(p){if(p.type==='points'){shopPoints+=p.amount;safeSet(SHOP_POINTS_KEY,shopPoints);}else if(p.type==='bread')grantBread();else if(p.type==='skip'){skipTokens++;safeSet(SKIP_TOKENS_KEY,skipTokens);}else if(p.type==='ball'){const b=BALL_STYLES.find(x=>x.id!=='classic'&&!unlockedBalls.includes(x.id));if(b){unlockedBalls.push(b.id);safeSet(BALLS_KEY,JSON.stringify(unlockedBalls));}else{shopPoints+=25000;safeSet(SHOP_POINTS_KEY,shopPoints);}}renderShop();return p.type==='miss'?'Niete – diesmal kein Gewinn.':p.type==='points'?'Gewonnen: '+p.amount.toLocaleString('de-DE')+' Punkte!':p.type==='bread'?'Brot gewonnen: +10 Leben!':p.type==='skip'?'Jackpot: ein Level-Überspringer!':'Ein neuer Spezialball ist freigeschaltet.';}
   function spinDailyWheel(){
-    if(safeGet(WHEEL_DATE_KEY,'')===localDayKey()){updateWheelButton();return;}
+    let tokens=Math.max(0,Number(safeGet(DUEL_SPIN_KEY,'0'))||0),bonusSpin=tokens>0;
+    if(!bonusSpin&&safeGet(WHEEL_DATE_KEY,'')===localDayKey()){updateWheelButton();return;}
     const i=Math.floor(Math.random()*WHEEL_PRIZES.length),p=WHEEL_PRIZES[i],message=grantWheelPrize(p);
-    safeSet(WHEEL_DATE_KEY,localDayKey());wheelSpinButton.disabled=true;wheelSpinButton.textContent='Morgen wieder drehen';wheelResult.textContent='Das Rad dreht …';
+    if(bonusSpin){tokens--;safeSet(DUEL_SPIN_KEY,tokens);}else safeSet(WHEEL_DATE_KEY,localDayKey());
+    wheelSpinButton.disabled=true;wheelSpinButton.textContent='Das Rad dreht …';wheelResult.textContent='Das Rad dreht …';
     const slice=360/WHEEL_PRIZES.length,target=(360-((i+.5)*slice)+360)%360;wheelCanvas.style.transition='none';wheelCanvas.style.transform='rotate(0deg)';
     requestAnimationFrame(()=>{wheelCanvas.style.transition='transform 5s cubic-bezier(.12,.78,.12,1)';wheelCanvas.style.transform='rotate('+(6*360+target)+'deg)';});
     let ticks=0,delay=70;const tick=()=>{playSound('wheel-tick',Math.max(0,1-ticks/15));vibrate(6);ticks++;if(ticks<15){delay+=22;setTimeout(tick,delay);}};tick();
-    setTimeout(()=>{wheelResult.textContent=message;safeSet(WHEEL_RESULT_KEY,message);if(p.type==='miss'){playSound('wheel-miss');vibrate([45,35,45]);}else{playSound('wheel-win');vibrate([25,45,25]);}},5100);
+    setTimeout(()=>{wheelResult.textContent=(bonusSpin?'Extra-Drehung: ':'')+message;safeSet(WHEEL_RESULT_KEY,wheelResult.textContent);updateWheelButton();if(p.type==='miss'){playSound('wheel-miss');vibrate([45,35,45]);}else{playSound('wheel-win');vibrate([25,45,25]);}},5100);
   }
   wheelSpinButton.addEventListener('click',spinDailyWheel);
   function safeGet(key, fallback) {
@@ -1144,6 +1248,7 @@
   }
   function onPointerDown(event) {
     if (stage.style.display === 'none') return;
+    if(duelMode){if(event.target.closest&&event.target.closest('button'))return;setDuelPaddle(event);return;}
     if (area) {
       const now = Date.now();
       tapCount = now - lastTap < 360 ? tapCount + 1 : 1;
@@ -1172,6 +1277,7 @@
     try { stage.setPointerCapture(event.pointerId); } catch (_) {}
   }
   function onPointerMove(event) {
+    if(duelMode){if(!(event.target.closest&&event.target.closest('button')))setDuelPaddle(event);return;}
     const p = pointFromEvent(event);
     if (isSelecting) {
       selBox.style.left = Math.min(p.x, startX) + 'px';
@@ -1235,6 +1341,9 @@
   }
 
   function returnToMenu() {
+    stopDuelNetwork();duelMode=false;duelState=null;duelResultShown=false;duelControls.style.display='none';
+    $('next-btn').style.display='';$('finish-menu-btn').textContent='Zurück zum Menü';bgImg.style.display='block';
+    duelPanel.style.display='none';
     isPlaying = false;
     imageOnly = false;
     imageOnlyStartedAt = 0;
@@ -1288,7 +1397,7 @@
     };
   }
   function drawLevelBackground() {
-    const palette = palettes[(level - 1) % palettes.length];
+    const palette = currentSeason.background;
     const grad = ctx.createLinearGradient(0, 0, canvas.width, canvas.height);
     grad.addColorStop(0, palette[0]);
     grad.addColorStop(0.55, palette[1]);
@@ -1328,6 +1437,7 @@
     if(theme==='space'){for(let i=0;i<38;i++){const x=rnd()*w,y=rnd()*h,r=1+rnd()*1.5;ctx.fillStyle=i%4?'#fff':'#b9c8ff';ctx.beginPath();ctx.arc(x,y,r,0,Math.PI*2);ctx.fill();}}
     else if(theme==='forest'){ctx.fillStyle='#071c1d';for(let x=0;x<w;x+=Math.max(28,w/12)){const th=h*(.14+rnd()*.13),base=h*.61;ctx.fillRect(x+w*.025,base,Math.max(3,w*.012),th);ctx.beginPath();ctx.moveTo(x,base);ctx.lineTo(x+w*.06,base-th*.7);ctx.lineTo(x+w*.12,base);ctx.fill();}}
     else if(theme==='neon'){const base=h*.65;ctx.fillStyle='#11102b';for(let x=0;x<w;x+=Math.max(24,w/14)){const bw=Math.max(14,w/17),bh=h*(.12+rnd()*.24);ctx.fillRect(x,base-bh,bw,bh);ctx.fillStyle='#58eaff';for(let wy=base-bh+8;wy<base-6;wy+=13)for(let wx=x+4;wx<x+bw-3;wx+=10)ctx.fillRect(wx,wy,3,4);ctx.fillStyle='#11102b';}}
+    else if(theme.indexOf('season-')===0){const season=SEASON_CATALOG[Number(theme.slice(7))-1]||currentSeason;ctx.globalAlpha=.24;ctx.strokeStyle=season.edge;ctx.lineWidth=Math.max(2,w*.005);for(let i=0;i<7;i++){ctx.beginPath();ctx.arc(w*(.12+i*.13),h*.72,Math.max(12,w*(.08+i*.007)),Math.PI,Math.PI*2);ctx.stroke();}ctx.globalAlpha=.52;for(let i=0;i<18;i++){const x=rnd()*w,y=rnd()*h;ctx.fillStyle=i%2?season.top:season.edge;ctx.beginPath();ctx.arc(x,y,1+rnd()*2.2,0,Math.PI*2);ctx.fill();}}
     ctx.restore();
   }
 
@@ -2047,8 +2157,239 @@
     showToast('Zweite Chance · 20 Leben.',1600);
   });
 
+
+  function stopDuelNetwork(){
+    try{if(duelConn)duelConn.close();}catch(_){}
+    try{if(duelPeer&&!duelPeer.destroyed)duelPeer.destroy();}catch(_){}
+    duelConn=null;duelPeer=null;duelRole='local';duelLocalIndex=0;
+  }
+  function closeDuelPanel(){stopDuelNetwork();duelRoomCode.readOnly=false;$('duel-room-copy').hidden=true;duelPanel.style.display='none';menu.style.display='block';duelStatus.textContent='';}
+  function localDuelProfile(){
+    const saved=loadProgress()||{level:1,score:0,playerHp:50};
+    return {name:currentPlayer(),hp:clamp(Number(saved.playerHp)||50,1,70),skin:selectedSkin,ball:selectedBall,level:saved.level||1,score:saved.score||0};
+  }
+  function findDuelSkin(id){return SKINS.find(x=>x.id===id)||SEASON_CATALOG.flatMap(x=>x.paddles).find(x=>x.id===id)||null;}
+  function findDuelBall(id){return BALL_STYLES.find(x=>x.id===id)||SEASON_CATALOG.flatMap(x=>x.balls).find(x=>x.id===id)||null;}
+  function profileFromTransfer(data){
+    const progress=data.progress||{};
+    const safeSkin=findDuelSkin(data.selectedSkin)?data.selectedSkin:'green';
+    const safeBall=findDuelBall(data.selectedBall)?data.selectedBall:'classic';
+    return {name:String(data.playerName||'Spieler 2').trim().slice(0,18)||'Spieler 2',
+      hp:clamp(Number(progress.playerHp)||50,1,70),skin:safeSkin,ball:safeBall,
+      level:clamp(Math.floor(Number(progress.level)||1),1,MAX_LEVEL),score:Math.max(0,Number(progress.score)||0)};
+  }
+  async function readDuelTransfer(code){
+    const parts=String(code||'').trim().split('.');
+    if(parts.length!==4||parts[0]!=='UNTIS2')throw new Error('Der Spielstand-Code ist unvollständig oder hat das falsche Format.');
+    const rawKey=codeToBytes(parts[1]),iv=codeToBytes(parts[2]),encrypted=codeToBytes(parts[3]);
+    if(rawKey.length!==32||iv.length!==12)throw new Error('Der Spielstand-Code ist ungültig.');
+    const key=await crypto.subtle.importKey('raw',rawKey,{name:'AES-GCM'},false,['decrypt']);
+    const plain=await crypto.subtle.decrypt({name:'AES-GCM',iv},key,encrypted);
+    const data=JSON.parse(new TextDecoder().decode(plain));
+    if(!data||![2,3].includes(data.version)||!data.progress||!Number.isFinite(data.progress.level)||data.progress.level<1||data.progress.level>MAX_LEVEL)throw new Error('Der Code enthält keinen gültigen Spielstand.');
+    return data;
+  }
+  function prepareDuelSurface(){
+    cancelAnimationFrame(animId);clearTimeout(resetTimer);finishPanel.style.display='none';duelPanel.style.display='none';menu.style.display='none';uploadBox.style.display='none';
+    stage.style.display='block';bgImg.style.display='none';area=null;imageOnly=false;roundFinished=false;isPlaying=true;duelMode=true;duelResultShown=false;
+    canvas.width=Math.max(320,Math.floor(stage.clientWidth));canvas.height=Math.max(480,Math.floor(stage.clientHeight));
+    Object.assign(canvas.style,{left:'0px',top:'0px',width:'100%',height:'100%',display:'block'});
+    duelControls.style.display='block';$('duel-rocket-1').hidden=false;$('duel-rocket-2').hidden=false;
+    canvas.style.touchAction='none';
+  }
+  function createDuelState(profiles){
+    const w=canvas.width,h=canvas.height,mid=h/2,paddleW=Math.max(62,w*.22);
+    const players=profiles.map((profile,index)=>{
+      const skin=findDuelSkin(profile.skin)||SKINS[0],ballStyle=findDuelBall(profile.ball)||BALL_STYLES[0];
+      const p={name:String(profile.name||'Spieler '+(index+1)).slice(0,18),hp:clamp(Number(profile.hp)||50,1,70),skin:profile.skin||'green',
+        top:skin.top,bottom:skin.bottom,edge:skin.edge,ballTop:ballStyle.top,ballBottom:ballStyle.bottom,ballGlow:ballStyle.glow,ballShape:ballStyle.shape,score:0,rockets:20,paddleW,paddleX:(w-paddleW)/2,
+        paddleY:index===0?mid-24:mid+24,bricks:[],ball:{x:w*.5,y:index===0?mid*.30:mid+h*.34,dx:(index===0?1:-1)*2.2,dy:index===0?3.6:-3.6,r:Math.max(7,Math.min(11,w*.018))}};
+      const cols=7,rows=4,gap=4,bw=(w-24-gap*(cols-1))/cols,bh=Math.max(13,Math.min(22,h*.018));
+      if(index===0)p.ball.y=mid-70;else p.ball.y=h-45;
+      for(let r=0;r<rows;r++)for(let c=0;c<cols;c++){
+        const y=index===0?60+r*(bh+gap):mid+60+r*(bh+gap);
+        p.bricks.push({x:12+c*(bw+gap),y,w:bw,h:bh,color:(r+c+index)%2?skin.top:skin.bottom,alive:true});
+      }
+      return p;
+    });
+    return {width:w,height:h,players,missiles:[],over:false,winner:-1,lastTick:performance.now()};
+  }
+  function scaleDuelSnapshot(state,width,height){
+    const copy=JSON.parse(JSON.stringify(state)),sx=width/(copy.width||width),sy=height/(copy.height||height);
+    copy.players.forEach(p=>{p.paddleX*=sx;p.paddleW*=sx;p.paddleY*=sy;p.ball.x*=sx;p.ball.y*=sy;p.ball.dx*=sx;p.ball.dy*=sy;p.ball.r*=Math.min(sx,sy);p.bricks.forEach(b=>{b.x*=sx;b.y*=sy;b.w*=sx;b.h*=sy;});});
+    copy.missiles.forEach(m=>{m.x*=sx;m.startY*=sy;m.endY*=sy;});
+    copy.width=width;copy.height=height;return copy;
+  }
+  function updateDuelRocketButtons(){
+    duelRocketButtons.forEach((button,index)=>{
+      const p=duelState&&duelState.players[index];button.textContent='Spieler '+(index+1)+' · '+(p?p.rockets:0)+' Raketen';button.disabled=!p||p.rockets<=0||duelState.over;
+    });
+  }
+  function startDuelGame(profiles,role,localIndex){
+    stopDuelAnimationOnly();duelRole=role;duelLocalIndex=localIndex;prepareDuelSurface();
+    duelRole=role;duelLocalIndex=localIndex;duelState=createDuelState(profiles);updateDuelRocketButtons();
+    if(role==='host'){ $('duel-rocket-2').hidden=true; if(duelConn&&duelConn.open)duelConn.send({type:'start',state:duelState});}
+    else if(role==='guest'){$('duel-rocket-1').hidden=true;}
+    animId=requestAnimationFrame(loop);
+  }
+  function stopDuelAnimationOnly(){cancelAnimationFrame(animId);animId=null;}
+  function startDuelFromRemote(state){
+    stopDuelAnimationOnly();duelRole='guest';duelLocalIndex=1;prepareDuelSurface();
+    duelState=scaleDuelSnapshot(state,canvas.width,canvas.height);$('duel-rocket-1').hidden=true;$('duel-rocket-2').hidden=false;updateDuelRocketButtons();animId=requestAnimationFrame(loop);
+  }
+  function fireDuelRocket(index){
+    if(!duelMode||!duelState||duelState.over)return;
+    if(duelRole==='guest'){if(index!==1||!duelConn||!duelConn.open)return;duelConn.send({type:'rocket'});return;}
+    if(duelRole==='host'&&index!==0)return;
+    const shooter=duelState.players[index];if(!shooter||shooter.rockets<=0)return;
+    const targetIndex=1-index,target=duelState.players[targetIndex];shooter.rockets--;
+    const startY=index===0?Math.max(40,duelState.height/2-190):duelState.height-40;
+    const endY=target.paddleY;
+    duelState.missiles.push({from:index,to:targetIndex,x:target.paddleX+target.paddleW/2,startY,endY,progress:0});
+    playSound('rocket-launch');vibrate([14,24,14]);updateDuelRocketButtons();
+  }
+  function handleDuelNetworkMessage(message){
+    if(!message||typeof message!=='object')return;
+    if(duelRole==='host'){
+      if(message.type==='profile'&&!duelMode){startDuelGame([localDuelProfile(),message.profile||{}],'host',0);return;}
+      if(message.type==='move'&&duelMode&&duelState){const p=duelState.players[1];p.paddleX=clamp(Number(message.x)*(duelState.width-p.paddleW),0,duelState.width-p.paddleW);}
+      if(message.type==='rocket'&&duelMode)fireDuelRocket(1);
+    }else if(duelRole==='guest'){
+      if(message.type==='start'&&!duelMode){startDuelFromRemote(message.state);return;}
+      if(message.type==='state'&&message.state&&duelMode){duelState=scaleDuelSnapshot(message.state,canvas.width,canvas.height);updateDuelRocketButtons();if(duelState.over&&!duelResultShown)finishDuel(duelState.winner,false);}
+    }
+  }
+  function createDuelRoom(){
+    stopDuelNetwork();
+    if(!window.Peer){duelStatus.textContent='Die Online-Verbindung ist gerade nicht verfügbar. Bitte lade die Seite neu oder spiele offline.';return;}
+    duelRoomCode.readOnly=false;duelStatus.textContent='Online-Raum wird erstellt …';
+    try{
+      duelRole='host';duelLocalIndex=0;duelPeer=new window.Peer();
+      duelPeer.on('open',id=>{duelRoomCode.value=id;duelRoomCode.readOnly=true;$('duel-room-copy').hidden=false;duelStatus.textContent='Raum bereit. Gib den Code an Spieler 2 weiter und warte auf den Beitritt.';});
+      duelPeer.on('connection',conn=>{
+        if(duelConn){conn.close();return;}duelConn=conn;
+        duelConn.on('data',handleDuelNetworkMessage);
+        duelConn.on('open',()=>{duelStatus.textContent='Verbindung hergestellt. Spiel startet …';});
+        duelConn.on('close',()=>{if(duelMode)showToast('Die Online-Verbindung wurde getrennt.',3000);else duelStatus.textContent='Die Verbindung wurde getrennt.';});
+        duelConn.on('error',()=>{duelStatus.textContent='Die Verbindung konnte nicht hergestellt werden.';});
+      });
+      duelPeer.on('error',err=>{duelStatus.textContent=err&&err.type==='unavailable-id'?'Dieser Raumcode ist schon belegt. Bitte erstelle einen neuen.':'Online-Verbindung fehlgeschlagen. Probiere es später erneut.';});
+    }catch(_){duelStatus.textContent='Online-Spiel konnte nicht gestartet werden.';}
+  }
+  function joinDuelRoom(){
+    stopDuelNetwork();
+    if(!window.Peer){duelStatus.textContent='Die Online-Verbindung ist gerade nicht verfügbar. Bitte lade die Seite neu oder spiele offline.';return;}
+    const code=duelRoomCode.value.trim();if(!code){duelStatus.textContent='Gib zuerst den Raumcode ein.';return;}
+    duelRoomCode.readOnly=false;duelStatus.textContent='Verbindung wird aufgebaut …';
+    try{
+      duelRole='guest';duelLocalIndex=1;duelPeer=new window.Peer();
+      duelPeer.on('open',()=>{duelConn=duelPeer.connect(code,{reliable:true});duelConn.on('open',()=>{duelStatus.textContent='Verbunden. Warte auf den Start …';duelConn.send({type:'profile',profile:localDuelProfile()});});duelConn.on('data',handleDuelNetworkMessage);});
+      duelPeer.on('error',()=>{duelStatus.textContent='Raum nicht gefunden oder Online-Vermittlung nicht erreichbar.';});
+    }catch(_){duelStatus.textContent='Online-Verbindung fehlgeschlagen. Probiere es später erneut.';}
+  }
+  $('duel-local-start').addEventListener('click',async()=>{
+    try{
+      if(!window.crypto||!crypto.subtle)throw new Error('Sichere Verschlüsselung ist hier nicht verfügbar.');
+      const data=await readDuelTransfer(duelSaveCode.value);
+      startDuelGame([localDuelProfile(),profileFromTransfer(data)],'local',-1);
+    }catch(error){duelStatus.textContent=error.message||'Spieler 2s Code konnte nicht geladen werden.';}
+  });
+  $('duel-room-create').addEventListener('click',createDuelRoom);
+  $('duel-room-join').addEventListener('click',joinDuelRoom);
+  $('duel-room-copy').addEventListener('click',async()=>{
+    try{await navigator.clipboard.writeText(duelRoomCode.value);duelStatus.textContent='Raumcode kopiert.';}
+    catch(_){duelRoomCode.focus();duelRoomCode.select();duelStatus.textContent='Markiere den Raumcode und kopiere ihn.';}
+  });
+  duelRocketButtons.forEach((button,index)=>button.addEventListener('click',()=>fireDuelRocket(index)));
+  function setDuelPaddle(event){
+    const rect=stage.getBoundingClientRect(),x=clamp((event.clientX-rect.left)/rect.width,0,1);
+    if(duelRole==='guest'){if(duelConn&&duelConn.open)duelConn.send({type:'move',x});return;}
+    const playerIndex=duelRole==='host'?0:(event.clientY<rect.top+rect.height/2?0:1);
+    const p=duelState&&duelState.players[playerIndex];if(p)p.paddleX=x*(canvas.width-p.paddleW);
+  }
+  function duelInputKey(event){
+    if(!duelMode||!duelState)return;
+    const key=event.key.toLowerCase();let index=-1,delta=0;
+    if(key==='arrowleft'){index=duelRole==='local'?1:duelLocalIndex;delta=-34;}
+    else if(key==='arrowright'){index=duelRole==='local'?1:duelLocalIndex;delta=34;}
+    else if(key==='a'){index=duelRole==='local'?0:duelLocalIndex;delta=-34;}
+    else if(key==='d'){index=duelRole==='local'?0:duelLocalIndex;delta=34;}
+    if(index>=0&&delta){event.preventDefault();const p=duelState.players[index],x=clamp(p.paddleX+delta,0,canvas.width-p.paddleW);if(duelRole==='guest'){if(duelConn&&duelConn.open)duelConn.send({type:'move',x:x/(canvas.width-p.paddleW||1)});}else p.paddleX=x;}
+    if((key==='q'&&(duelRole==='local'||duelRole==='host'))||(key==='enter'&&duelRole==='host'))fireDuelRocket(0);
+    if((key==='p'&&duelRole==='local')||(key==='enter'&&duelRole==='guest'))fireDuelRocket(1);
+  }
+  document.addEventListener('keydown',duelInputKey);
+  function updateDuel(){
+    if(!duelState||duelState.over)return;
+    const h=duelState.height,w=duelState.width,mid=h/2,now=performance.now(),dt=clamp((now-duelState.lastTick)/16.67,.5,2);duelState.lastTick=now;
+    const p1=duelState.players[0],p2=duelState.players[1],players=[p1,p2];
+    for(let i=0;i<2;i++){
+      const p=players[i],ball=p.ball,oldY=ball.y;ball.x+=ball.dx*dt;ball.y+=ball.dy*dt;
+      if(ball.x-ball.r<4){ball.x=ball.r+4;ball.dx=Math.abs(ball.dx);}
+      if(ball.x+ball.r>w-4){ball.x=w-ball.r-4;ball.dx=-Math.abs(ball.dx);}
+      if(i===0&&ball.y-ball.r<30){ball.y=30+ball.r;ball.dy=Math.abs(ball.dy);}
+      if(i===1&&ball.y+ball.r>h-30){ball.y=h-30-ball.r;ball.dy=-Math.abs(ball.dy);}
+      if(i===0&&ball.dy>0&&oldY< p.paddleY&&ball.y+ball.r>=p.paddleY){
+        if(ball.x>=p.paddleX-ball.r&&ball.x<=p.paddleX+p.paddleW+ball.r){const hit=clamp((ball.x-p.paddleX-p.paddleW/2)/(p.paddleW/2),-1,1);ball.dy=-Math.abs(ball.dy);ball.dx=hit*4.6;ball.y=p.paddleY-ball.r;}
+        else{finishDuel(1,true);return;}
+      }
+      if(i===1&&ball.dy<0&&oldY>p.paddleY&&ball.y-ball.r<=p.paddleY){
+        if(ball.x>=p.paddleX-ball.r&&ball.x<=p.paddleX+p.paddleW+ball.r){const hit=clamp((ball.x-p.paddleX-p.paddleW/2)/(p.paddleW/2),-1,1);ball.dy=Math.abs(ball.dy);ball.dx=hit*4.6;ball.y=p.paddleY+ball.r;}
+        else{finishDuel(0,true);return;}
+      }
+      for(const brick of p.bricks){if(!brick.alive)continue;if(ball.x+ball.r>brick.x&&ball.x-ball.r<brick.x+brick.w&&ball.y+ball.r>brick.y&&ball.y-ball.r<brick.y+brick.h){brick.alive=false;ball.dy*=-1;p.score+=100;break;}}
+    }
+    for(let i=duelState.missiles.length-1;i>=0;i--){
+      const missile=duelState.missiles[i];missile.progress=Math.min(1,missile.progress+.026*dt);
+      if(missile.progress>=1){
+        const target=duelState.players[missile.to];
+        target.hp=Math.max(0,target.hp-10);playSound('rocket-hit');vibrate([25,35,25]);
+        if(target.hp<=0){finishDuel(missile.from,true);return;}
+        duelState.missiles.splice(i,1);
+      }
+    }
+    updateDuelRocketButtons();
+  }
+  function drawDuel(){
+    if(!duelState)return;const w=canvas.width,h=canvas.height,mid=h/2,now=performance.now();
+    const top=ctx.createLinearGradient(0,0,w,mid);top.addColorStop(0,currentSeason.background[0]);top.addColorStop(1,'#211931');
+    ctx.fillStyle=top;ctx.fillRect(0,0,w,mid);
+    const bottom=ctx.createLinearGradient(0,mid,w,h);bottom.addColorStop(0,'#102f35');bottom.addColorStop(1,currentSeason.background[1]);
+    ctx.fillStyle=bottom;ctx.fillRect(0,mid,w,h-mid);
+    ctx.strokeStyle='rgba(255,255,255,.55)';ctx.setLineDash([8,8]);ctx.beginPath();ctx.moveTo(0,mid);ctx.lineTo(w,mid);ctx.stroke();ctx.setLineDash([]);
+    duelState.players.forEach((p,index)=>{
+      p.bricks.forEach(brick=>{if(!brick.alive)return;ctx.fillStyle=brick.color;ctx.shadowColor=p.edge;ctx.shadowBlur=8;ctx.fillRect(brick.x,brick.y,brick.w,brick.h);ctx.shadowBlur=0;ctx.strokeStyle='rgba(255,255,255,.55)';ctx.strokeRect(brick.x,brick.y,brick.w,brick.h);});
+      const grad=ctx.createLinearGradient(p.paddleX,p.paddleY-7,p.paddleX,p.paddleY+7);grad.addColorStop(0,p.top);grad.addColorStop(1,p.bottom);
+      ctx.fillStyle=grad;ctx.shadowColor=p.edge;ctx.shadowBlur=12;drawRoundedRect(p.paddleX,p.paddleY-7,p.paddleW,14,7);ctx.fill();ctx.shadowBlur=0;
+      ctx.save();ctx.shadowColor=p.ballGlow;ctx.shadowBlur=20;ctx.fillStyle=ctx.createLinearGradient(p.ball.x-p.ball.r,p.ball.y-p.ball.r,p.ball.x+p.ball.r,p.ball.y+p.ball.r);const ballGrad=ctx.fillStyle;ballGrad.addColorStop(0,p.ballTop);ballGrad.addColorStop(1,p.ballBottom);ctx.beginPath();if(p.ballShape==='diamond'){ctx.moveTo(p.ball.x,p.ball.y-p.ball.r);ctx.lineTo(p.ball.x+p.ball.r,p.ball.y);ctx.lineTo(p.ball.x,p.ball.y+p.ball.r);ctx.lineTo(p.ball.x-p.ball.r,p.ball.y);ctx.closePath();}else if(p.ballShape==='star'){for(let n=0;n<10;n++){const a=-Math.PI/2+n*Math.PI/5,r=p.ball.r*(n%2?.48:1),x=p.ball.x+Math.cos(a)*r,y=p.ball.y+Math.sin(a)*r;n?ctx.lineTo(x,y):ctx.moveTo(x,y);}ctx.closePath();}else if(p.ballShape==='hex'){ctx.beginPath();for(let n=0;n<6;n++){const a=n*Math.PI/3,x=p.ball.x+Math.cos(a)*p.ball.r,y=p.ball.y+Math.sin(a)*p.ball.r;n?ctx.lineTo(x,y):ctx.moveTo(x,y);}ctx.closePath();}else ctx.arc(p.ball.x,p.ball.y,p.ball.r,0,Math.PI*2);ctx.fill();ctx.restore();
+      ctx.fillStyle='#fff';ctx.font='bold '+Math.max(14,Math.min(22,w*.025))+'px sans-serif';ctx.textAlign='left';ctx.textBaseline='middle';
+      const label='Spieler '+(index+1)+' · '+p.name+' · Leben '+p.hp+' · Raketen '+p.rockets;
+      ctx.fillText(label,12,index===0?20:h-18);
+      ctx.textAlign='right';ctx.fillText('Punkte '+formatNumber(p.score),w-12,index===0?20:h-18);
+    });
+    duelState.missiles.forEach(m=>{const y=m.startY+(m.endY-m.startY)*m.progress;ctx.save();ctx.translate(m.x,y);ctx.rotate(m.to===1?Math.PI/2:-Math.PI/2);ctx.fillStyle='#ffcf55';ctx.shadowColor='#ff4c25';ctx.shadowBlur=14;ctx.beginPath();ctx.moveTo(0,-13);ctx.lineTo(6,5);ctx.lineTo(0,2);ctx.lineTo(-6,5);ctx.closePath();ctx.fill();ctx.restore();});
+    if(duelState.over){ctx.fillStyle='rgba(0,0,0,.25)';ctx.fillRect(0,0,w,h);}
+  }
+  function finishDuel(winnerIndex,authoritative=true){
+    if(!duelState||duelResultShown)return;duelResultShown=true;duelState.over=true;duelState.winner=winnerIndex;roundFinished=true;isPlaying=false;cancelAnimationFrame(animId);
+    const winner=duelState.players[winnerIndex];finishTitle.textContent=winner.name+' gewinnt!';
+    finishScore.textContent='Ergebnis: '+formatNumber(winner.score)+' Punkte · '+winner.hp+' Leben';
+    finishTime.textContent='Ballverlust oder 0 Leben beendet das Spiel sofort.';
+    let getsSpin=duelRole==='local'||duelLocalIndex===winnerIndex;
+    if(getsSpin){const count=(Number(safeGet(DUEL_SPIN_KEY,'0'))||0)+1;safeSet(DUEL_SPIN_KEY,count);finishBonus.textContent='Extra-Drehung am Glücksrad freigeschaltet.';updateWheelButton();}
+    else finishBonus.textContent='Der Gewinner erhält eine Extra-Drehung am Glücksrad.';
+    finishMultiplier.textContent='Jeder startete mit 20 Raketen. Raketen-Treffer kosten 10 Leben.';
+    finishRank.textContent='Die Spielstände der beiden Personen wurden nicht überschrieben.';
+    nextBtn.style.display='none';secondChanceBtn.hidden=true;finishMenuBtn.textContent='Zurück zum Menü';finishPanel.style.display='block';
+    if(authoritative&&duelRole==='host'&&duelConn&&duelConn.open)try{duelConn.send({type:'state',state:duelState});}catch(_){}
+  }
+  function tickDuelNetwork(now){
+    if(duelRole==='host'&&duelConn&&duelConn.open&&now-duelLastSync>45){duelLastSync=now;try{duelConn.send({type:'state',state:duelState});}catch(_){}}
+  }
+
   function loop() {
     if (!isPlaying) return;
+    if(duelMode){const now=performance.now();if(duelRole!=='guest')updateDuel();if(duelMode&&isPlaying){drawDuel();tickDuelNetwork(now);animId=requestAnimationFrame(loop);}return;}
     const now = Date.now();
     ctx.drawImage(bgLayer,0,0);
     drawHud(now);
