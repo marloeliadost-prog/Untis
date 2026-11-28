@@ -325,7 +325,7 @@
     @keyframes goldShift { from { background-position:0 0; } to { background-position:200% 0; } }
     @keyframes ringPulse { 0%,100% { box-shadow:0 0 18px rgba(124,77,255,.35); } 50% { box-shadow:0 0 42px rgba(0,191,165,.55); } }
     @keyframes popIn { from { opacity:0;transform:scale(.6); } to { opacity:1;transform:scale(1); } }
-    .menu-extra-grid { display:grid;grid-template-columns:1fr;gap:10px;margin:0 0 12px; }
+    .menu-extra-grid { display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin:0 0 12px; }
     .menu-extra-grid button { min-height:48px;padding:10px 7px;font-size:13px; }
     #account-panel,#quiz-panel { display:none;position:fixed;z-index:76;left:50%;top:50dvh;transform:translate(-50%,-50%); }
     #account-panel input,#quiz-panel input:not([type=checkbox]),#quiz-panel select { width:100%;padding:11px 12px;margin:0 0 12px;border:1px solid #57577d;border-radius:10px;background:#19192b;color:#fff; }
@@ -341,6 +341,7 @@
     .quiz-options button[hidden] { display:none; }
     .quiz-options button:disabled { opacity:.75; }
     #quiz-feedback { min-height:20px;margin:9px 0; }
+    .quiz-report { width:100%;min-height:42px;margin:4px 0 8px;font-size:13px; }
     #quiz-next { width:100%;margin-top:8px; }
     #quiz-result h3 { margin:12px 0;color:#ffe08a; }
     #quiz-result-text { margin:10px 0;line-height:1.5; }
@@ -376,6 +377,7 @@
       <button class="secondary-btn" id="transfer-open" type="button">Spielstand</button>
     </div>
     <div class="menu-extra-grid">
+      <button class="secondary-btn" id="quiz-open" type="button">Lern-Quiz</button>
       <button class="secondary-btn" id="account-open" type="button">Konto &amp; Cloud</button>
     </div>
     <div class="stats-strip">
@@ -461,7 +463,7 @@
   </div>
   <div id="account-panel" class="panel" aria-labelledby="account-title">
     <h2 id="account-title">Konto &amp; Cloud-Spielstand</h2>
-    <p class="small-note">Mit einem Konto kannst du deinen Untis-Spielstand sicher speichern und auf einem anderen Gerät laden. Deine E-Mail wird für die Anmeldung verwendet.</p>
+    <p class="small-note">Mit einem Konto kannst du deinen Untis-Spielstand und optional dein Hintergrundbild bei Supabase speichern. Deine E-Mail wird für die Anmeldung verwendet. Nutze das Konto und die Cloud nur mit Zustimmung deiner Eltern oder Erziehungsberechtigten.</p>
     <label class="field-label" for="account-email">E-Mail</label>
     <input id="account-email" type="email" autocomplete="email" maxlength="254" placeholder="name@example.com">
     <label class="field-label" for="account-password">Passwort</label>
@@ -476,6 +478,43 @@
       <button class="secondary-btn" id="cloud-load" type="button" disabled>Auf dieses Gerät laden</button>
     </div>
     <div class="panel-actions"><button class="secondary-btn" id="account-signout" type="button" disabled>Abmelden</button><button class="secondary-btn" id="account-close" type="button">Zurück</button></div>
+  </div>
+  <div id="quiz-panel" class="panel" aria-labelledby="quiz-title">
+    <h2 id="quiz-title">Lern-Quiz für Tests</h2>
+    <p class="small-note">Wähle Fach und Klasse. Ein Foto ist optional. Eine Runde hat 10 Fragen.</p>
+    <div id="quiz-setup">
+      <label class="field-label" for="quiz-subject">Fach</label>
+      <select id="quiz-subject">
+        <option>Mathematik</option><option>Deutsch</option><option>Englisch</option><option>Französisch</option><option>Spanisch</option><option>Latein</option><option>Biologie</option><option>Chemie</option><option>Physik</option><option>Geschichte</option><option>Geografie</option><option>Politik</option><option>Wirtschaft</option><option>Informatik</option><option>Kunst</option><option>Musik</option><option>Sport</option><option>Religion/Ethik</option>
+      </select>
+      <label class="field-label" for="quiz-grade">Klasse</label>
+      <select id="quiz-grade">
+        <option value="1">Klasse 1</option><option value="2">Klasse 2</option><option value="3">Klasse 3</option><option value="4">Klasse 4</option><option value="5" selected>Klasse 5</option><option value="6">Klasse 6</option><option value="7">Klasse 7</option><option value="8">Klasse 8</option><option value="9">Klasse 9</option><option value="10">Klasse 10</option><option value="11">Klasse 11</option><option value="12">Klasse 12</option><option value="13">Klasse 13</option>
+      </select>
+      <label class="field-label" for="quiz-topic">Thema (optional)</label>
+      <input id="quiz-topic" type="text" maxlength="160" placeholder="Zum Beispiel: Bruchrechnung">
+      <label class="field-label" for="quiz-photo">Foto von Lernstoff (optional)</label>
+      <input id="quiz-photo" type="file" accept="image/jpeg,image/png,image/webp" capture="environment">
+      <label class="quiz-consent"><input id="quiz-consent" type="checkbox"><span>Meine Eltern oder Erziehungsberechtigten haben zugestimmt. Ich bin einverstanden, dass Fach, Klasse, Thema und – falls ausgewählt – mein Foto an Anthropic gesendet werden, damit die KI Fragen erstellt. Laut Anthropic werden Eingaben und Antworten bei diesem strukturierten Quiz nicht als Gespräch gespeichert. Für den Betreiber können API-Kosten entstehen. Ohne Zustimmung startet das Quiz nicht.</span></label>
+      <p class="small-note">Lade nur Schulmaterial ohne Namen, Gesichter oder andere persönliche Daten hoch. Untis speichert das Foto und das Quiz nicht. KI-Fragen können Fehler enthalten: Prüfe Antworten mit deinen Unterlagen und melde problematische Fragen. Höchstens 3 neue Runden pro Konto und Tag.</p>
+      <button class="menu-btn" id="quiz-generate" type="button">10 Fragen erstellen</button>
+      <p id="quiz-status" class="small-note" role="status"></p>
+    </div>
+    <div id="quiz-play" hidden>
+      <p id="quiz-progress" class="quiz-progress"></p>
+      <h3 id="quiz-question"></h3>
+      <div id="quiz-options" class="quiz-options"></div>
+      <p id="quiz-feedback" class="small-note" role="status"></p>
+      <button class="secondary-btn quiz-report" id="quiz-report" type="button">Frage melden</button>
+      <div class="quiz-jokers"><button class="secondary-btn" id="quiz-fifty" type="button"></button><button class="secondary-btn" id="quiz-skip" type="button"></button></div>
+      <button class="menu-btn" id="quiz-next" type="button" hidden>Weiter</button>
+    </div>
+    <div id="quiz-result" hidden>
+      <h3>Runde beendet</h3>
+      <p id="quiz-result-text"></p>
+      <button class="secondary-btn" id="quiz-again" type="button">Neue Runde</button>
+    </div>
+    <div class="panel-actions"><button class="secondary-btn" id="quiz-close" type="button">Zurück</button></div>
   </div>
   <div id="upload-box" class="panel">
     <h2>Eigenes Bild als Blöcke</h2>
@@ -541,6 +580,7 @@
   const skinGallery = $('skin-gallery');
   const seasonBanner=$('season-banner');
   const accountPanel=$('account-panel'),accountStatus=$('account-status');
+  const quizPanel=$('quiz-panel'),quizStatus=$('quiz-status'),quizOptions=$('quiz-options');
   const accountEmail=$('account-email'),accountPassword=$('account-password');
   const cloudClient=window.supabase&&window.supabase.createClient
     ?window.supabase.createClient('https://ruuqnokwrvykfybjfxmr.supabase.co','sb_publishable_m41NZVQSqDECpZkoo99SqQ_Mp_UH3K5')
@@ -583,6 +623,7 @@
   const DUEL_SPIN_KEY='untis-blockbreaker-duel-wheel-spins-v1';
   const FX_OWNED_KEY='untis-blockbreaker-effects-owned-v1',FX_SETTINGS_KEY='untis-blockbreaker-effects-selected-v1',HELP_KEY='untis-blockbreaker-help-items-v1';
   const CLOUD_SAVE_KEYS=[PROGRESS_KEY,SAVED_AREA_KEY,SKINS_KEY,SHOP_POINTS_KEY,BALLS_KEY,SELECTED_BALL_KEY,SKIP_TOKENS_KEY,WHEEL_DATE_KEY,WHEEL_RESULT_KEY,AUDIO_SETTINGS_KEY,DUEL_SPIN_KEY,FX_OWNED_KEY,FX_SETTINGS_KEY,HELP_KEY,'untis-blockbreaker-highscore-v3','untis-blockbreaker-leaderboard-v3','untis-blockbreaker-playername-v3','untis-blockbreaker-selected-skin-v1'];
+  let activeQuiz=[],quizIndex=0,quizCorrect=0,quizFiftyUsed=false,quizAnswered=false;
   const BALL_STYLES=[
     {id:'classic',name:'Klassisch',top:'#fff',bottom:'#e53935',glow:'#ff453a',price:0,shape:'circle'},
     {id:'ice-orb',name:'Eiskristall',top:'#fff',bottom:'#30cfff',glow:'#61eaff',price:18000,shape:'diamond'},
@@ -976,6 +1017,128 @@
     accountStatus.textContent='Spielstand geladen. Das Spiel wird neu geöffnet …';
     setTimeout(()=>location.reload(),700);
   }
+  async function deleteCachedImage() {
+    const db=await openSavedImageDb();
+    await new Promise((resolve,reject)=>{const tx=db.transaction(SAVED_IMAGE_STORE,'readwrite');tx.objectStore(SAVED_IMAGE_STORE).delete('screenshot');tx.oncomplete=resolve;tx.onerror=()=>reject(tx.error);tx.onabort=()=>reject(tx.error);});
+    db.close();
+  }
+  function cloudLocalSnapshot() {
+    const local={};for(const key of CLOUD_SAVE_KEYS){try{const value=localStorage.getItem(key);if(value!==null)local[key]=value;}catch(_){}}
+    return local;
+  }
+  function setAccountMessage(message,isError=false) { accountStatus.textContent=message;accountStatus.style.color=isError?'#ffb0a8':''; }
+  async function refreshCloudAccount() {
+    if(!cloudClient){setAccountMessage('Die Verbindung zum Spielkonto konnte nicht geladen werden. Bitte lade die Seite neu.',true);return null;}
+    const {data,error}=await cloudClient.auth.getSession();
+    if(error){setAccountMessage('Anmeldung konnte gerade nicht geprüft werden.',true);return null;}
+    const user=data.session?.user||null,signedIn=!!user;
+    $('account-signin').disabled=signedIn;$('account-signup').disabled=signedIn;$('account-signout').disabled=!signedIn;
+    $('cloud-save').disabled=!signedIn;$('cloud-load').disabled=!signedIn;accountEmail.disabled=signedIn;accountPassword.disabled=signedIn;
+    if(user)setAccountMessage('Angemeldet als '+(user.email||'Spielkonto')+'.');
+    else if(!accountStatus.textContent.includes('Prüfe dein E-Mail-Postfach'))setAccountMessage('Bitte anmelden oder ein Konto erstellen.');
+    return user;
+  }
+  async function compressCloudImage(image) {
+    if(image.size<=7*1024*1024)return image;
+    if(!window.createImageBitmap)throw new Error('Das Bild ist für den Cloud-Speicher zu groß. Wähle bitte ein kleineres Bild.');
+    const bitmap=await createImageBitmap(image),scale=Math.min(1,1800/Math.max(bitmap.width,bitmap.height));
+    const c=document.createElement('canvas');c.width=Math.max(1,Math.round(bitmap.width*scale));c.height=Math.max(1,Math.round(bitmap.height*scale));
+    c.getContext('2d').drawImage(bitmap,0,0,c.width,c.height);bitmap.close();
+    const result=await new Promise(resolve=>c.toBlob(resolve,'image/jpeg',.78));
+    if(!result||result.size>7*1024*1024)throw new Error('Das Bild konnte nicht passend verkleinert werden. Bitte wähle ein kleineres Bild.');
+    return result;
+  }
+  async function saveCloudGame() {
+    if(!cloudClient)throw new Error('Die Spielkonto-Verbindung ist nicht geladen.');
+    const {data:{session},error:sessionError}=await cloudClient.auth.getSession();
+    if(sessionError||!session?.user)throw new Error('Bitte melde dich zuerst an.');
+    const user=session.user,local=cloudLocalSnapshot(),image=await loadCachedImage();
+    let imagePath=null;
+    if(image){const upload=await compressCloudImage(image);imagePath=user.id+'/background';const {error}=await cloudClient.storage.from('game-saves').upload(imagePath,upload,{upsert:true,contentType:upload.type||'application/octet-stream'});if(error)throw error;}
+    const {error}=await cloudClient.from('game_saves').upsert({user_id:user.id,save_data:{version:1,local},image_path:imagePath,updated_at:new Date().toISOString()},{onConflict:'user_id'});
+    if(error)throw error;setAccountMessage('Spielstand ist in der Cloud gespeichert.');
+  }
+  async function loadCloudGame() {
+    if(!cloudClient)throw new Error('Die Spielkonto-Verbindung ist nicht geladen.');
+    const {data:{session},error:sessionError}=await cloudClient.auth.getSession();
+    if(sessionError||!session?.user)throw new Error('Bitte melde dich zuerst an.');
+    const user=session.user,{data,error}=await cloudClient.from('game_saves').select('save_data,image_path,updated_at').eq('user_id',user.id).maybeSingle();
+    if(error)throw error;if(!data)throw new Error('Für dieses Konto gibt es noch keinen Cloud-Spielstand.');
+    const local=data.save_data?.local;if(!local||typeof local!=='object'||Array.isArray(local))throw new Error('Der gespeicherte Spielstand ist unvollständig.');
+    if(data.image_path){if(data.image_path!==user.id+'/background')throw new Error('Der Bildpfad des Spielstands ist ungültig.');const {data:image,error:imageError}=await cloudClient.storage.from('game-saves').download(data.image_path);if(imageError)throw imageError;await saveCachedImage(image);}
+    else await deleteCachedImage();
+    for(const key of CLOUD_SAVE_KEYS){try{if(Object.prototype.hasOwnProperty.call(local,key)&&typeof local[key]==='string')localStorage.setItem(key,local[key]);else localStorage.removeItem(key);}catch(_){}}
+    if(!data.image_path){try{localStorage.removeItem(SAVED_AREA_KEY);}catch(_){}}
+    accountStatus.textContent='Spielstand geladen. Das Spiel wird neu geöffnet …';setTimeout(()=>location.reload(),700);
+  }
+  async function makeQuizPhoto(file) {
+    if(file.size>12*1024*1024)throw new Error('Das Foto ist zu groß. Wähle bitte ein kleineres Bild.');
+    if(!['image/jpeg','image/png','image/webp'].includes(file.type))throw new Error('Bitte nutze ein JPG-, PNG- oder WebP-Foto.');
+    if(!window.createImageBitmap)throw new Error('Dieses Gerät kann das Foto nicht vorbereiten. Du kannst das Quiz ohne Foto starten.');
+    const bitmap=await createImageBitmap(file),scale=Math.min(1,1024/Math.max(bitmap.width,bitmap.height));
+    const c=document.createElement('canvas');c.width=Math.max(1,Math.round(bitmap.width*scale));c.height=Math.max(1,Math.round(bitmap.height*scale));c.getContext('2d').drawImage(bitmap,0,0,c.width,c.height);bitmap.close();
+    let blob=await new Promise(resolve=>c.toBlob(resolve,'image/jpeg',.78));if(!blob)throw new Error('Das Foto konnte nicht vorbereitet werden.');
+    if(blob.size>1400*1024)blob=await new Promise(resolve=>c.toBlob(resolve,'image/jpeg',.58));
+    if(!blob||blob.size>1400*1024)throw new Error('Das Foto ist noch zu groß. Wähle bitte ein kleineres Foto.');
+    const bytes=new Uint8Array(await blob.arrayBuffer());let binary='';for(let i=0;i<bytes.length;i+=0x8000)binary+=String.fromCharCode(...bytes.subarray(i,i+0x8000));
+    return {mimeType:blob.type,data:btoa(binary)};
+  }
+  function quizMessage(message,isError=false) { quizStatus.textContent=message;quizStatus.style.color=isError?'#ffb0a8':''; }
+  async function generateQuiz() {
+    if(!$('quiz-consent').checked)throw new Error('Bitte bestätige zuerst den Hinweis zur Datenverarbeitung.');
+    if(!cloudClient)throw new Error('Die Spielkonto-Verbindung ist nicht geladen.');
+    const {data:{session},error:sessionError}=await cloudClient.auth.getSession();if(sessionError||!session?.user)throw new Error('Bitte melde dich zuerst unter „Konto & Cloud“ an.');
+    const file=$('quiz-photo').files?.[0]||null,photo=file?await makeQuizPhoto(file):null;
+    const body={subject:$('quiz-subject').value,grade:Number($('quiz-grade').value),topic:$('quiz-topic').value.trim(),photo};
+    const {data,error}=await cloudClient.functions.invoke('generate-quiz',{body});
+    if(error)throw new Error(error.message||'Quiz-Dienst nicht erreichbar. Bitte prüfe die Verbindung und versuche es später erneut.');
+    if(!data||!Array.isArray(data.questions)||data.questions.length!==10)throw new Error('Der Quiz-Dienst hat keine vollständige Runde zurückgegeben.');
+    for(const q of data.questions)if(typeof q.question!=='string'||!Array.isArray(q.options)||q.options.length!==4||!Number.isInteger(q.correctIndex)||q.correctIndex<0||q.correctIndex>3)throw new Error('Die erstellten Fragen hatten ein ungültiges Format. Bitte versuche es erneut.');
+    activeQuiz=data.questions;quizIndex=0;quizCorrect=0;quizFiftyUsed=false;quizAnswered=false;$('quiz-setup').hidden=true;$('quiz-result').hidden=true;$('quiz-play').hidden=false;quizMessage('');renderQuizQuestion();
+  }
+  async function reportQuizQuestion() {
+    const q=activeQuiz[quizIndex];
+    if(!q)return;
+    const button=$('quiz-report');
+    button.disabled=true;button.textContent='Wird gemeldet …';
+    try {
+      if(!cloudClient)throw new Error('Die Spielkonto-Verbindung ist nicht geladen.');
+      const {data:{session},error:sessionError}=await cloudClient.auth.getSession();
+      if(sessionError||!session?.user)throw new Error('Bitte melde dich zuerst unter „Konto & Cloud“ an.');
+      const {data,error}=await cloudClient.functions.invoke('generate-quiz',{body:{action:'report',subject:$('quiz-subject').value,grade:Number($('quiz-grade').value),question:q.question}});
+      if(error||!data?.ok)throw new Error('Die Meldung konnte nicht gesendet werden.');
+      button.textContent='Gemeldet – danke';
+      $('quiz-feedback').textContent='Danke. Die Frage wurde gespeichert; dein Spielkonto wird dabei nicht mitgespeichert. Wenn dich etwas daran beunruhigt, sprich bitte mit einer erwachsenen Vertrauensperson.';
+    } catch(error) {
+      button.disabled=false;button.textContent='Frage melden';
+      $('quiz-feedback').textContent=error.message||'Die Meldung konnte nicht gesendet werden.';
+    }
+  }
+  function renderQuizJokers() {
+    $('quiz-fifty').textContent='50:50 · '+(Number(helpInventory.quizFiftyFifty)||0);$('quiz-skip').textContent='Überspringen · '+(Number(helpInventory.quizSkip)||0);
+    $('quiz-fifty').disabled=quizFiftyUsed||(Number(helpInventory.quizFiftyFifty)||0)<1||quizAnswered;$('quiz-skip').disabled=(Number(helpInventory.quizSkip)||0)<1||quizAnswered;
+  }
+  function renderQuizQuestion() {
+    if(quizIndex>=activeQuiz.length){finishQuiz();return;}
+    const q=activeQuiz[quizIndex];quizFiftyUsed=false;quizAnswered=false;$('quiz-report').disabled=false;$('quiz-report').textContent='Frage melden';$('quiz-progress').textContent='Frage '+(quizIndex+1)+' von '+activeQuiz.length+' · Richtig: '+quizCorrect;
+    $('quiz-question').textContent=q.question;quizOptions.replaceChildren();$('quiz-feedback').textContent='';$('quiz-next').hidden=true;
+    q.options.forEach((option,index)=>{const button=document.createElement('button');button.className='quiz-option';button.type='button';button.textContent=option;button.addEventListener('click',()=>answerQuizQuestion(index,false));quizOptions.appendChild(button);});
+    renderQuizJokers();
+  }
+  function answerQuizQuestion(answerIndex,wasSkipped) {
+    if(quizAnswered)return;const q=activeQuiz[quizIndex],correct=wasSkipped||answerIndex===q.correctIndex;quizAnswered=true;
+    if(correct){quizCorrect++;shopPoints+=500;safeSet(SHOP_POINTS_KEY,shopPoints);updateShopBalance();$('quiz-feedback').textContent=(wasSkipped?'Übersprungen und als richtig gezählt. ':'Richtig! ')+'+500 Shop-Punkte. '+(q.explanation||'');}
+    else $('quiz-feedback').textContent='Noch nicht richtig. '+(q.explanation||'');
+    [...quizOptions.querySelectorAll('button')].forEach(button=>button.disabled=true);$('quiz-next').textContent=quizIndex===activeQuiz.length-1?'Ergebnis ansehen':'Nächste Frage';$('quiz-next').hidden=false;renderQuizJokers();
+  }
+  function finishQuiz() {
+    $('quiz-play').hidden=true;$('quiz-result').hidden=false;const perfect=quizCorrect===activeQuiz.length;
+    if(perfect){shopPoints+=1000;safeSet(SHOP_POINTS_KEY,shopPoints);updateShopBalance();}
+    $('quiz-result-text').textContent='Du hast '+quizCorrect+' von '+activeQuiz.length+' Fragen richtig. '+(quizCorrect*500+(perfect?1000:0))+' Shop-Punkte erhalten.'+(perfect?' Darin ist der 1.000-Punkte-Bonus für 10 von 10 enthalten.':'');$('quiz-again').focus();
+  }
+  function resetQuizView() {
+    activeQuiz=[];quizIndex=0;quizCorrect=0;quizFiftyUsed=false;quizAnswered=false;$('quiz-play').hidden=true;$('quiz-result').hidden=true;$('quiz-setup').hidden=false;$('quiz-photo').value='';$('quiz-consent').checked=false;quizMessage('');
+  }
   async function updateResumeButton() {
     const saved = loadProgress();
     if (!saved) { resumePlay.hidden = true; return; }
@@ -1230,10 +1393,30 @@
     $('cloud-load').disabled=true;setAccountMessage('Cloud-Spielstand wird geladen …');
     try{await loadCloudGame();}catch(error){setAccountMessage('Laden nicht möglich: '+(error.message||'Bitte später erneut versuchen.'),true);await refreshCloudAccount();}
   });
+  $('quiz-open').addEventListener('click',()=>{menu.style.display='none';quizPanel.style.display='block';resetQuizView();});
+  $('quiz-close').addEventListener('click',()=>{quizPanel.style.display='none';menu.style.display='block';});
+  $('quiz-generate').addEventListener('click',async()=>{
+    const button=$('quiz-generate');button.disabled=true;quizMessage('Die 10 Fragen werden erstellt …');
+    try{await generateQuiz();}catch(error){quizMessage(error.message||'Fragen konnten nicht erstellt werden.',true);}
+    button.disabled=false;
+  });
+  $('quiz-report').addEventListener('click',reportQuizQuestion);
+  $('quiz-fifty').addEventListener('click',()=>{
+    if(quizFiftyUsed||quizAnswered||!activeQuiz.length||(Number(helpInventory.quizFiftyFifty)||0)<1)return;
+    const q=activeQuiz[quizIndex],wrong=q.options.map((_,i)=>i).filter(i=>i!==q.correctIndex).sort(()=>Math.random()-.5).slice(0,2);
+    wrong.forEach(i=>{const button=quizOptions.children[i];if(button)button.hidden=true;});
+    helpInventory.quizFiftyFifty--;safeSet(HELP_KEY,JSON.stringify(helpInventory));quizFiftyUsed=true;renderQuizJokers();
+  });
+  $('quiz-skip').addEventListener('click',()=>{
+    if((Number(helpInventory.quizSkip)||0)<1||quizAnswered||!activeQuiz.length)return;
+    helpInventory.quizSkip--;safeSet(HELP_KEY,JSON.stringify(helpInventory));answerQuizQuestion(-1,true);
+  });
+  $('quiz-next').addEventListener('click',()=>{quizIndex++;renderQuizQuestion();});
+  $('quiz-again').addEventListener('click',resetQuizView);
   if(cloudClient)cloudClient.auth.onAuthStateChange(()=>{refreshCloudAccount().catch(()=>{});});
   else {
     $('account-signin').disabled=true;$('account-signup').disabled=true;
-    setAccountMessage('Die Spielkonto-Verbindung konnte nicht geladen werden.',true);
+    $('quiz-generate').disabled=true;setAccountMessage('Die Spielkonto-Verbindung konnte nicht geladen werden.',true);
   }
   $('duel-open').addEventListener('click',()=>{menu.style.display='none';duelPanel.style.display='block';duelStatus.textContent='';duelRoomCode.value='';$('duel-room-copy').hidden=true;});
   $('duel-close').addEventListener('click',()=>{closeDuelPanel();});
