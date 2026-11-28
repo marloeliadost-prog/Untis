@@ -325,6 +325,30 @@
     @keyframes goldShift { from { background-position:0 0; } to { background-position:200% 0; } }
     @keyframes ringPulse { 0%,100% { box-shadow:0 0 18px rgba(124,77,255,.35); } 50% { box-shadow:0 0 42px rgba(0,191,165,.55); } }
     @keyframes popIn { from { opacity:0;transform:scale(.6); } to { opacity:1;transform:scale(1); } }
+    .menu-extra-grid { display:grid;grid-template-columns:1fr;gap:10px;margin:0 0 12px; }
+    .menu-extra-grid button { min-height:48px;padding:10px 7px;font-size:13px; }
+    #account-panel,#quiz-panel { display:none;position:fixed;z-index:76;left:50%;top:50dvh;transform:translate(-50%,-50%); }
+    #account-panel input,#quiz-panel input:not([type=checkbox]),#quiz-panel select { width:100%;padding:11px 12px;margin:0 0 12px;border:1px solid #57577d;border-radius:10px;background:#19192b;color:#fff; }
+    .account-actions,.quiz-jokers { display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin:10px 0; }
+    .account-actions button,.quiz-jokers button { min-height:46px;padding:9px 6px;font-size:13px; }
+    .quiz-consent { display:flex;gap:9px;align-items:flex-start;margin:7px 0 12px;padding:11px;border:1px solid #71672d;border-radius:10px;background:rgba(255,224,110,.07);text-align:left;color:#eee6c4;font-size:12px;line-height:1.45; }
+    .quiz-consent input { flex:none;margin-top:2px;accent-color:#9b8cff; }
+    #quiz-generate { width:100%;margin-top:8px; }
+    .quiz-progress { color:#ffe08a;margin:8px 0;font-size:13px; }
+    #quiz-question { color:#f3f0ff;font-size:18px;line-height:1.4;margin:12px 0;text-align:left; }
+    .quiz-options { display:grid;gap:8px; }
+    .quiz-options button { width:100%;padding:12px;text-align:left;border:1px solid #57577d;border-radius:10px;background:#19192b;color:#fff;line-height:1.35; }
+    .quiz-options button[hidden] { display:none; }
+    .quiz-options button:disabled { opacity:.75; }
+    #quiz-feedback { min-height:20px;margin:9px 0; }
+    #quiz-next { width:100%;margin-top:8px; }
+    #quiz-result h3 { margin:12px 0;color:#ffe08a; }
+    #quiz-result-text { margin:10px 0;line-height:1.5; }
+    #quiz-panel [hidden] { display:none; }
+    @media (max-width:390px) {
+      .menu-extra-grid { gap:6px; }
+      .menu-extra-grid button { font-size:12px;min-height:44px; }
+    }
     @keyframes fixedPanelIn { from { opacity:0;transform:translate(-50%,-46%) scale(.97); } to { opacity:1;transform:translate(-50%,-50%) scale(1); } }
     @media (max-width:390px) {
       body::before { inset:-25%; }
@@ -350,6 +374,9 @@
       <button class="secondary-btn" id="shop-open" type="button">Shop</button>
       <button class="secondary-btn" id="wheel-open" type="button">Glücksrad</button>
       <button class="secondary-btn" id="transfer-open" type="button">Spielstand</button>
+    </div>
+    <div class="menu-extra-grid">
+      <button class="secondary-btn" id="account-open" type="button">Konto &amp; Cloud</button>
     </div>
     <div class="stats-strip">
       <div id="menu-high" class="stat-chip">Highscore: <strong id="highscore-menu">0</strong></div>
@@ -432,6 +459,24 @@
     <button class="menu-btn" id="daily-spin" type="button">Täglich drehen</button><p id="wheel-result" class="small-note"></p>
     <div class="panel-actions"><button class="secondary-btn" id="wheel-close" type="button">ZURÜCK</button></div>
   </div>
+  <div id="account-panel" class="panel" aria-labelledby="account-title">
+    <h2 id="account-title">Konto &amp; Cloud-Spielstand</h2>
+    <p class="small-note">Mit einem Konto kannst du deinen Untis-Spielstand sicher speichern und auf einem anderen Gerät laden. Deine E-Mail wird für die Anmeldung verwendet.</p>
+    <label class="field-label" for="account-email">E-Mail</label>
+    <input id="account-email" type="email" autocomplete="email" maxlength="254" placeholder="name@example.com">
+    <label class="field-label" for="account-password">Passwort</label>
+    <input id="account-password" type="password" autocomplete="current-password" minlength="8" maxlength="128" placeholder="Mindestens 8 Zeichen">
+    <p id="account-status" class="small-note" role="status">Bitte anmelden oder ein Konto erstellen.</p>
+    <div class="account-actions">
+      <button class="menu-btn" id="account-signin" type="button">Anmelden</button>
+      <button class="secondary-btn" id="account-signup" type="button">Konto erstellen</button>
+    </div>
+    <div class="account-actions">
+      <button class="menu-btn" id="cloud-save" type="button" disabled>In Cloud speichern</button>
+      <button class="secondary-btn" id="cloud-load" type="button" disabled>Auf dieses Gerät laden</button>
+    </div>
+    <div class="panel-actions"><button class="secondary-btn" id="account-signout" type="button" disabled>Abmelden</button><button class="secondary-btn" id="account-close" type="button">Zurück</button></div>
+  </div>
   <div id="upload-box" class="panel">
     <h2>Eigenes Bild als Blöcke</h2>
     <ol class="upload-steps">
@@ -468,6 +513,7 @@
   </div>
 
 <script src="https://unpkg.com/peerjs@1.5.5/dist/peerjs.min.js" crossorigin="anonymous"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script>
 (() => {
   'use strict';
@@ -494,6 +540,11 @@
   const skinGalleryToggle = $('skin-gallery-toggle');
   const skinGallery = $('skin-gallery');
   const seasonBanner=$('season-banner');
+  const accountPanel=$('account-panel'),accountStatus=$('account-status');
+  const accountEmail=$('account-email'),accountPassword=$('account-password');
+  const cloudClient=window.supabase&&window.supabase.createClient
+    ?window.supabase.createClient('https://ruuqnokwrvykfybjfxmr.supabase.co','sb_publishable_m41NZVQSqDECpZkoo99SqQ_Mp_UH3K5')
+    :null;
   const highscoreMenu = $('highscore-menu');
   const leaderList = $('leader-list');
   const myRank = $('my-rank');
@@ -531,6 +582,7 @@
   const AUDIO_SETTINGS_KEY='untis-blockbreaker-audio-settings-v1';
   const DUEL_SPIN_KEY='untis-blockbreaker-duel-wheel-spins-v1';
   const FX_OWNED_KEY='untis-blockbreaker-effects-owned-v1',FX_SETTINGS_KEY='untis-blockbreaker-effects-selected-v1',HELP_KEY='untis-blockbreaker-help-items-v1';
+  const CLOUD_SAVE_KEYS=[PROGRESS_KEY,SAVED_AREA_KEY,SKINS_KEY,SHOP_POINTS_KEY,BALLS_KEY,SELECTED_BALL_KEY,SKIP_TOKENS_KEY,WHEEL_DATE_KEY,WHEEL_RESULT_KEY,AUDIO_SETTINGS_KEY,DUEL_SPIN_KEY,FX_OWNED_KEY,FX_SETTINGS_KEY,HELP_KEY,'untis-blockbreaker-highscore-v3','untis-blockbreaker-leaderboard-v3','untis-blockbreaker-playername-v3','untis-blockbreaker-selected-skin-v1'];
   const BALL_STYLES=[
     {id:'classic',name:'Klassisch',top:'#fff',bottom:'#e53935',glow:'#ff453a',price:0,shape:'circle'},
     {id:'ice-orb',name:'Eiskristall',top:'#fff',bottom:'#30cfff',glow:'#61eaff',price:18000,shape:'diamond'},
@@ -708,7 +760,7 @@
   let fxSettings=loadObject(FX_SETTINGS_KEY,{trail:'spark',burst:'confetti',theme:'space'});
   let fxOwned=loadObject(FX_OWNED_KEY,{trail:['spark'],burst:['confetti'],theme:['space']});
   ['trail','burst','theme'].forEach(key=>{if(!Array.isArray(fxOwned[key]))fxOwned[key]=[key==='trail'?'spark':key==='burst'?'confetti':'space'];if(!fxOwned[key].includes(fxSettings[key]))fxSettings[key]=fxOwned[key][0];});
-  let helpInventory=loadObject(HELP_KEY,{shield:0,secondChance:0,magnet:false,startFire:false,startWide:false});
+  let helpInventory=loadObject(HELP_KEY,{shield:0,secondChance:0,magnet:false,startFire:false,startWide:false,quizFiftyFifty:0,quizSkip:0});
   let particles=[];
   const reducedMotion=window.matchMedia&&window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
@@ -816,6 +868,113 @@
     });
     db.close();
     return image;
+  }
+
+  async function deleteCachedImage() {
+    const db = await openSavedImageDb();
+    await new Promise((resolve, reject) => {
+      const tx = db.transaction(SAVED_IMAGE_STORE, 'readwrite');
+      tx.objectStore(SAVED_IMAGE_STORE).delete('screenshot');
+      tx.oncomplete = resolve;
+      tx.onerror = () => reject(tx.error);
+      tx.onabort = () => reject(tx.error);
+    });
+    db.close();
+  }
+  function cloudLocalSnapshot() {
+    const local={};
+    for(const key of CLOUD_SAVE_KEYS) {
+      try { const value=localStorage.getItem(key); if(value!==null)local[key]=value; } catch(_) {}
+    }
+    return local;
+  }
+  function setAccountMessage(message,isError=false) {
+    accountStatus.textContent=message;
+    accountStatus.style.color=isError?'#ffb0a8':'';
+  }
+  async function refreshCloudAccount() {
+    if(!cloudClient) {
+      setAccountMessage('Die Verbindung zum Spielkonto konnte nicht geladen werden. Bitte lade die Seite neu.',true);
+      return null;
+    }
+    const {data,error}=await cloudClient.auth.getSession();
+    if(error) { setAccountMessage('Anmeldung konnte gerade nicht geprüft werden.',true); return null; }
+    const user=data.session?.user||null;
+    const signedIn=!!user;
+    $('account-signin').disabled=signedIn;
+    $('account-signup').disabled=signedIn;
+    $('account-signout').disabled=!signedIn;
+    $('cloud-save').disabled=!signedIn;
+    $('cloud-load').disabled=!signedIn;
+    accountEmail.disabled=signedIn;
+    accountPassword.disabled=signedIn;
+    if(user) setAccountMessage('Angemeldet als '+(user.email||'Spielkonto')+'.');
+    else if(!accountStatus.textContent.includes('Prüfe dein E-Mail-Postfach')) setAccountMessage('Bitte anmelden oder ein Konto erstellen.');
+    return user;
+  }
+  async function compressCloudImage(image) {
+    if(image.size<=7*1024*1024)return image;
+    if(!window.createImageBitmap)throw new Error('Das Bild ist für den Cloud-Speicher zu groß. Wähle bitte ein kleineres Bild.');
+    const bitmap=await createImageBitmap(image);
+    const scale=Math.min(1,1800/Math.max(bitmap.width,bitmap.height));
+    const c=document.createElement('canvas');c.width=Math.max(1,Math.round(bitmap.width*scale));c.height=Math.max(1,Math.round(bitmap.height*scale));
+    c.getContext('2d').drawImage(bitmap,0,0,c.width,c.height);bitmap.close();
+    const result=await new Promise(resolve=>c.toBlob(resolve,'image/jpeg',.78));
+    if(!result||result.size>7*1024*1024)throw new Error('Das Bild konnte nicht passend verkleinert werden. Bitte wähle ein kleineres Bild.');
+    return result;
+  }
+  async function saveCloudGame() {
+    if(!cloudClient)throw new Error('Die Spielkonto-Verbindung ist nicht geladen.');
+    const {data:{session},error:sessionError}=await cloudClient.auth.getSession();
+    if(sessionError||!session?.user)throw new Error('Bitte melde dich zuerst an.');
+    const user=session.user;
+    const local=cloudLocalSnapshot();
+    const image=await loadCachedImage();
+    let imagePath=null;
+    if(image) {
+      const upload=await compressCloudImage(image);
+      imagePath=user.id+'/background';
+      const {error}=await cloudClient.storage.from('game-saves').upload(imagePath,upload,{upsert:true,contentType:upload.type||'application/octet-stream'});
+      if(error)throw error;
+    }
+    const {error}=await cloudClient.from('game_saves').upsert({
+      user_id:user.id,
+      save_data:{version:1,local},
+      image_path:imagePath,
+      updated_at:new Date().toISOString()
+    },{onConflict:'user_id'});
+    if(error)throw error;
+    setAccountMessage('Spielstand ist in der Cloud gespeichert.');
+  }
+  async function loadCloudGame() {
+    if(!cloudClient)throw new Error('Die Spielkonto-Verbindung ist nicht geladen.');
+    const {data:{session},error:sessionError}=await cloudClient.auth.getSession();
+    if(sessionError||!session?.user)throw new Error('Bitte melde dich zuerst an.');
+    const user=session.user;
+    const {data,error}=await cloudClient.from('game_saves').select('save_data,image_path,updated_at').eq('user_id',user.id).maybeSingle();
+    if(error)throw error;
+    if(!data)throw new Error('Für dieses Konto gibt es noch keinen Cloud-Spielstand.');
+    const local=data.save_data?.local;
+    if(!local||typeof local!=='object'||Array.isArray(local))throw new Error('Der gespeicherte Spielstand ist unvollständig.');
+    if(data.image_path) {
+      if(data.image_path!==user.id+'/background')throw new Error('Der Bildpfad des Spielstands ist ungültig.');
+      const {data:image,error:imageError}=await cloudClient.storage.from('game-saves').download(data.image_path);
+      if(imageError)throw imageError;
+      await saveCachedImage(image);
+    } else {
+      await deleteCachedImage();
+    }
+    for(const key of CLOUD_SAVE_KEYS) {
+      try {
+        if(Object.prototype.hasOwnProperty.call(local,key)&&typeof local[key]==='string')localStorage.setItem(key,local[key]);
+        else localStorage.removeItem(key);
+      } catch(_) {}
+    }
+    if(!data.image_path) {
+      try { localStorage.removeItem(SAVED_AREA_KEY); } catch(_) {}
+    }
+    accountStatus.textContent='Spielstand geladen. Das Spiel wird neu geöffnet …';
+    setTimeout(()=>location.reload(),700);
   }
   async function updateResumeButton() {
     const saved = loadProgress();
@@ -963,7 +1122,9 @@
       ['secondChance','Zweite Chance · Bestand: '+(Number(helpInventory.secondChance)||0),90000,()=>{helpInventory.secondChance=(Number(helpInventory.secondChance)||0)+1;}],
       ['magnet','Power-up-Magnet',78000,()=>{helpInventory.magnet=true;}],
       ['startFire','Starthilfe · Feuerball',105000,()=>{helpInventory.startFire=true;}],
-      ['startWide','Starthilfe · breites Brett',85000,()=>{helpInventory.startWide=true;}]
+      ['startWide','Starthilfe · breites Brett',85000,()=>{helpInventory.startWide=true;}],
+      ['quizFiftyFifty','Quiz-Joker · 50:50 (Bestand: '+(Number(helpInventory.quizFiftyFifty)||0)+')',68000,()=>{helpInventory.quizFiftyFifty=(Number(helpInventory.quizFiftyFifty)||0)+1;}],
+      ['quizSkip','Quiz-Joker · Überspringen (Bestand: '+(Number(helpInventory.quizSkip)||0)+')',92000,()=>{helpInventory.quizSkip=(Number(helpInventory.quizSkip)||0)+1;}]
     ];
     items.forEach(([key,name,base,action])=>{
       const active=key==='magnet'||key==='startFire'||key==='startWide'?!!helpInventory[key]:false;
@@ -1037,6 +1198,43 @@
   $('transfer-open').addEventListener('click', () => { menu.style.display='none'; transferPanel.style.display='block'; transferStatus.textContent=''; });
   $('wheel-open').addEventListener('click',()=>{menu.style.display='none';wheelPanel.style.display='block';wheelResult.textContent='';drawDailyWheel();updateWheelButton();});
   $('wheel-close').addEventListener('click',()=>{wheelPanel.style.display='none';menu.style.display='block';});
+
+  $('account-open').addEventListener('click',async()=>{menu.style.display='none';accountPanel.style.display='block';accountPassword.value='';await refreshCloudAccount();});
+  $('account-close').addEventListener('click',()=>{accountPanel.style.display='none';menu.style.display='block';});
+  $('account-signup').addEventListener('click',async()=>{
+    if(!cloudClient){setAccountMessage('Die Spielkonto-Verbindung ist nicht geladen.',true);return;}
+    const email=accountEmail.value.trim(),password=accountPassword.value;
+    if(!email||password.length<8){setAccountMessage('Gib eine gültige E-Mail und ein Passwort mit mindestens 8 Zeichen ein.',true);return;}
+    $('account-signup').disabled=true;
+    const {data,error}=await cloudClient.auth.signUp({email,password});
+    $('account-signup').disabled=false;
+    if(error){setAccountMessage('Konto konnte nicht erstellt werden: '+error.message,true);return;}
+    if(data.session)setAccountMessage('Konto erstellt und angemeldet.');
+    else {accountStatus.textContent='Prüfe dein E-Mail-Postfach und bestätige die Anmeldung. Danach kannst du dich hier anmelden.';accountStatus.style.color='';}
+    await refreshCloudAccount();
+  });
+  $('account-signin').addEventListener('click',async()=>{
+    if(!cloudClient){setAccountMessage('Die Spielkonto-Verbindung ist nicht geladen.',true);return;}
+    const {error}=await cloudClient.auth.signInWithPassword({email:accountEmail.value.trim(),password:accountPassword.value});
+    if(error){setAccountMessage('Anmeldung fehlgeschlagen. Prüfe E-Mail, Passwort und ggf. die E-Mail-Bestätigung.',true);return;}
+    accountPassword.value='';await refreshCloudAccount();
+  });
+  $('account-signout').addEventListener('click',async()=>{if(!cloudClient)return;const {error}=await cloudClient.auth.signOut();if(error)setAccountMessage('Abmelden war gerade nicht möglich.',true);else{accountPassword.value='';await refreshCloudAccount();}});
+  $('cloud-save').addEventListener('click',async()=>{
+    $('cloud-save').disabled=true;setAccountMessage('Spielstand wird sicher gespeichert …');
+    try{await saveCloudGame();}catch(error){setAccountMessage('Speichern nicht möglich: '+(error.message||'Bitte später erneut versuchen.'),true);}
+    await refreshCloudAccount();
+  });
+  $('cloud-load').addEventListener('click',async()=>{
+    if(!confirm('Der Cloud-Spielstand ersetzt den Spielstand auf diesem Gerät. Fortfahren?'))return;
+    $('cloud-load').disabled=true;setAccountMessage('Cloud-Spielstand wird geladen …');
+    try{await loadCloudGame();}catch(error){setAccountMessage('Laden nicht möglich: '+(error.message||'Bitte später erneut versuchen.'),true);await refreshCloudAccount();}
+  });
+  if(cloudClient)cloudClient.auth.onAuthStateChange(()=>{refreshCloudAccount().catch(()=>{});});
+  else {
+    $('account-signin').disabled=true;$('account-signup').disabled=true;
+    setAccountMessage('Die Spielkonto-Verbindung konnte nicht geladen werden.',true);
+  }
   $('duel-open').addEventListener('click',()=>{menu.style.display='none';duelPanel.style.display='block';duelStatus.textContent='';duelRoomCode.value='';$('duel-room-copy').hidden=true;});
   $('duel-close').addEventListener('click',()=>{closeDuelPanel();});
   $('transfer-close').addEventListener('click', () => { transferPanel.style.display='none'; menu.style.display='block'; });
